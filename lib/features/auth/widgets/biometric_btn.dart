@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:smartfix_mobile/core/auth_helper.dart';
 
 /// Reusable biometric authentication button widget
 class BiometricBtn extends StatefulWidget {
-  final VoidCallback onSuccess;
+  final Future<void> Function() onSuccess;
   final Function(String message)? onError;
 
   const BiometricBtn({
@@ -20,26 +21,59 @@ class _BiometricBtnState extends State<BiometricBtn> {
   final AuthHelper _authHelper = AuthHelper();
   bool _isChecking = false;
 
+  @override
+  void dispose() {
+    _authHelper.stopAuthentication();
+    super.dispose();
+  }
+
   Future<void> _handleBiometricAuth() async {
+    if (_isChecking) return;
+
     setState(() => _isChecking = true);
-    final canAuth = await _authHelper.canCheckBiometrics();
 
-    if (!canAuth) {
-      setState(() => _isChecking = false);
-      widget.onError?.call('Biometrics not available or not enrolled on this device.');
-      return;
-    }
+    try {
+      final canAuth = await _authHelper.canCheckBiometrics();
+      if (!mounted) return;
 
-    final success = await _authHelper.authenticateWithBiometrics(
-      reason: 'Please scan fingerprint or face to sign into SmartFix',
-    );
+      if (!canAuth) {
+        widget.onError?.call(
+          'Biometrics not available or not enrolled. Please use your email and password to sign in.',
+        );
+        return;
+      }
 
-    setState(() => _isChecking = false);
+      final success = await _authHelper.authenticateWithBiometrics(
+        reason: 'Scan your fingerprint/face or use device PIN to sign into SmartFix',
+      );
+      if (!mounted) return;
 
-    if (success) {
-      widget.onSuccess();
-    } else {
-      widget.onError?.call('Biometric verification failed.');
+      if (success) {
+        await widget.onSuccess();
+      } else {
+        widget.onError?.call(
+          'Biometric verification was cancelled. You can sign in using your password above.',
+        );
+      }
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'auth_in_progress') {
+        widget.onError?.call('Authentication already in progress. Please try again.');
+      } else if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
+        widget.onError?.call('Biometrics temporarily locked due to failed attempts. Please use your password.');
+      } else if (e.code == 'PasscodeNotSet' || e.code == 'NotEnrolled') {
+        widget.onError?.call('No screen lock or biometrics configured. Please sign in with password.');
+      } else {
+        widget.onError?.call('Biometric verification cancelled. Please use password to sign in.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      widget.onError?.call('Biometric authentication error. Please sign in with password.');
+    } finally {
+      // Guarantee that the loading spinner is stopped in all scenarios
+      if (mounted) {
+        setState(() => _isChecking = false);
+      }
     }
   }
 
@@ -56,9 +90,9 @@ class _BiometricBtnState extends State<BiometricBtn> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : Icon(Icons.fingerprint, color: theme.colorScheme.primary, size: 26),
-      label: const Text(
-        'Quick Biometric Sign-In',
-        style: TextStyle(fontWeight: FontWeight.w600),
+      label: Text(
+        _isChecking ? 'Verifying...' : 'Quick Biometric Sign-In',
+        style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),

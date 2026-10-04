@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,8 +10,64 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Uses Laravel Sanctum token-based authentication. The bearer token is
 /// persisted to [SharedPreferences] so sessions survive app restarts.
 class ApiService {
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  // ---------------------------------------------------------------------------
+  // Base URL & Network Configuration
+  // ---------------------------------------------------------------------------
+
+  /// Set this to `true` when testing on a physical smartphone over local Wi-Fi.
+  /// Set to `false` when testing on an Android Studio Emulator.
+  static const bool isPhysicalDevice = false;
+
+  /// Development machine's local IPv4 address (e.g. '192.168.1.5' or '192.168.100.12').
+  /// Used when testing on physical devices connected to the same Wi-Fi network.
+  static const String localNetworkIp = '192.168.100.12';
+
+  /// Port on which the Laravel backend is serving (default: 8000).
+  static const String port = '8000';
+
+  /// Compile-time environment override (e.g., `flutter run --dart-define=BASE_URL=http://...`)
+  static const String _envBaseUrl = String.fromEnvironment('BASE_URL');
+
+  /// Runtime override for base URL (if configured programmatically).
+  static String? _customBaseUrl;
+
+  /// Allows setting or switching the base URL dynamically at runtime.
+  static void setBaseUrl(String? url) {
+    _customBaseUrl = url;
+  }
+
+  /// Dynamic Base URL resolver based on platform, environment, and device type:
+  /// - Android Studio Emulator: `http://10.0.2.2:8000/api` (maps loopback to host)
+  /// - Android Physical Smartphone: `http://<localNetworkIp>:8000/api` (when [isPhysicalDevice] = true)
+  /// - iOS Simulator / Desktop: `http://localhost:8000/api` (or local IP for physical iOS)
+  /// - Runtime/Compile-time override: Uses [_customBaseUrl] or `--dart-define=BASE_URL=...`
+  static String get baseUrl {
+    if (_customBaseUrl != null && _customBaseUrl!.isNotEmpty) {
+      return _customBaseUrl!;
+    }
+    if (_envBaseUrl.isNotEmpty) {
+      return _envBaseUrl;
+    }
+
+    if (!kIsWeb && Platform.isAndroid) {
+      final host = isPhysicalDevice ? localNetworkIp : '10.0.2.2';
+      return 'http://$host:$port/api';
+    } else if (!kIsWeb && Platform.isIOS) {
+      final host = isPhysicalDevice ? localNetworkIp : 'localhost';
+      return 'http://$host:$port/api';
+    }
+
+    // Fallback for Web / Desktop / other environments
+    return 'http://localhost:$port/api';
+  }
+
+  /// Internal reference for backward compatibility
+  static String get _baseUrl => baseUrl;
+
   static const String _tokenKey = 'auth_token';
+
+  /// Getter for the SharedPreferences key used for the auth token.
+  static String get tokenKey => _tokenKey;
 
   static String? _authToken;
 
@@ -35,21 +94,22 @@ class ApiService {
   }
 
   /// Persists [token] to disk and sets it in memory.
-  static Future<void> _saveToken(String token) async {
+  static Future<void> saveToken(String token) async {
     _authToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
   }
 
-  /// Clears the token from both memory and disk (used on logout).
+  /// Clears the token from both memory and disk (used on logout and before re-login).
   static Future<void> clearToken() async {
     _authToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }
 
-  /// Returns `true` when a token is present in memory.
-  static bool get hasToken => _authToken != null;
+  /// Returns `true` when a valid token is present in memory.
+  static bool get hasToken =>
+      _authToken != null && _authToken!.trim().isNotEmpty;
 
   // ---------------------------------------------------------------------------
   // Headers
@@ -57,20 +117,22 @@ class ApiService {
 
   /// Default headers — includes Bearer token when available.
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        if (_authToken != null) 'Authorization': 'Bearer $_authToken',
-      };
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+  };
 
   // ---------------------------------------------------------------------------
   // Generic HTTP helpers
   // ---------------------------------------------------------------------------
 
   /// Sends a GET request to [endpoint] (relative to [_baseUrl]).
-  Future<dynamic> get(String endpoint,
-      {Map<String, String>? queryParams}) async {
-    final uri =
-        Uri.parse('$_baseUrl/$endpoint').replace(queryParameters: queryParams);
+  Future<dynamic> get(
+    String endpoint, {
+    Map<String, String>? queryParams,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/$endpoint')
+        .replace(queryParameters: queryParams);
     try {
       final response = await http.get(uri, headers: _headers);
       return _handleResponse(response);
@@ -120,21 +182,43 @@ class ApiService {
 
   /// Authenticates with the Laravel Sanctum backend.
   ///
-  /// On success the Sanctum plain-text token is persisted and set as the
-  /// active auth header for all subsequent requests.
+  /// Resets any existing session or authorization header before sending the
+  /// credentials to prevent post-logout authentication conflicts. On success,
+  /// the Sanctum token is saved to persistent storage and applied to active headers.
   ///
   /// Returns the full JSON response body (includes `token`, `user`, etc.).
   Future<Map<String, dynamic>> login(String email, String password) async {
+    // 1. Explicitly clear any stale session/token before sending new login request
+    await clearToken();
+
+    // 2. Perform authentication request without stale Authorization headers
     final data = await post('login', {
-      'email': email,
+      'email': email.trim(),
       'password': password,
     });
 
-    final responseMap = data as Map<String, dynamic>;
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Invalid response received from server.');
+    }
 
-    // The Laravel backend returns the token under the `token` key.
-    final String token = responseMap['token'] as String;
-    await _saveToken(token);
+    final responseMap = data;
+
+    // 3. Extract the token cleanly across possible response keys
+    String? token;
+    if (responseMap['token'] != null) {
+      token = responseMap['token'].toString();
+    } else if (responseMap['access_token'] != null) {
+      token = responseMap['access_token'].toString();
+    } else if (responseMap['data'] is Map && responseMap['data']['token'] != null) {
+      token = responseMap['data']['token'].toString();
+    }
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Authentication token missing from server response.');
+    }
+
+    // 4. Persist and apply the new session token
+    await saveToken(token);
 
     return responseMap;
   }

@@ -57,8 +57,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   // ── Login logic ─────────────────────────────────────────────────────────
 
-  void _onLoginSuccess(String token, String username) {
-    _authHelper.setSession(token: token, username: username);
+  Future<void> _onLoginSuccess(String token, String username) async {
+    await _authHelper.setSession(token: token, username: username);
 
     NotificationHelper().showNotification(
       id: 101,
@@ -66,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen>
       body: 'You are securely logged into SmartFix Mobile.',
     );
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainLayout()),
     );
@@ -86,25 +87,39 @@ class _LoginScreenState extends State<LoginScreen>
       final String username = (response['user'] is Map
               ? (response['user']['name'] as String?)
               : null) ??
-          _emailController.text.split('@').first;
+          _emailController.text.trim().split('@').first;
+
+      final String token = (response['token'] ??
+              response['access_token'] ??
+              (response['data'] is Map ? response['data']['token'] : null) ??
+              '') as String;
 
       if (!mounted) return;
-      _onLoginSuccess(response['token'] as String, username);
+      await _onLoginSuccess(token, username);
     } on Exception catch (e) {
       if (!mounted) return;
       _showError(e.toString().replaceFirst('Exception: ', ''));
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Login failed. Please check your credentials or network connection.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _handleBiometricSuccess() {
-    // Biometric bypasses the API login — uses cached session instead.
-    final username = _emailController.text.isNotEmpty
-        ? _emailController.text.split('@').first
-        : 'tech_biometric_user';
-    final token = 'biometric_session_${DateTime.now().millisecondsSinceEpoch}';
-    _onLoginSuccess(token, username);
+  Future<void> _handleBiometricSuccess() async {
+    // Biometric sign in: retrieve last known username or fallback
+    final savedUsername = await _authHelper.getUsername();
+    final username = _emailController.text.trim().isNotEmpty
+        ? _emailController.text.trim().split('@').first
+        : (savedUsername.isNotEmpty ? savedUsername : 'Technician');
+
+    final existingToken = _authHelper.sessionToken;
+    final token = (existingToken != null && existingToken.isNotEmpty)
+        ? existingToken
+        : 'biometric_session_${DateTime.now().millisecondsSinceEpoch}';
+
+    await _onLoginSuccess(token, username);
   }
 
   void _showError(String message) {
