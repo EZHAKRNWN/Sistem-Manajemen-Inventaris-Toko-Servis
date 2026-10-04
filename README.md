@@ -1,210 +1,210 @@
-# SmartFix — Mobile-Based Inventory & Supply Chain Management System with Blockchain Integrity (SHA-256)
+# SmartFix — Sistem Manajemen Inventaris & Rantai Pasok Toko Servis Smartphone Berbasis Mobile dengan Integritas Blockchain (SHA-256)
 
 [![Flutter Version](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart Version](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Laravel Version](https://img.shields.io/badge/Laravel-11.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
-[![License](https://img.shields.io/badge/License-Academic%20Project-0F766E)](#development-team)
-[![Blockchain](https://img.shields.io/badge/Security-SHA--256%20Cryptographic%20Ledger-14B8A6)](#cryptographic-blockchain-verification)
+[![Status Proyek](https://img.shields.io/badge/Status-Tugas%20Akhir-0F766E)](#tim-pengembang)
+[![Keamanan](https://img.shields.io/badge/Keamanan-Buku%20Besar%20Kriptografi%20SHA--256-14B8A6)](#verifikasi-integritas-blockchain-sha-256)
 
 > **Tugas Akhir — Pemrograman Aplikasi Mobile (Semester 5)**  
-> An enterprise-grade, mobile-first inventory and supply chain traceability system designed for smartphone repair workshops, featuring token-based authentication and a tamper-proof cryptographic audit trail.
+> Sistem manajemen inventaris dan pelacakan rantai pasok suku cadang smartphone berskala *enterprise-grade*, dilengkapi autentikasi berbasis token serta audit jejak kriptografi *immutable* anti-pemalsuan.
 
 ---
 
-## 📌 Table of Contents
-- [Project Overview](#-project-overview)
-- [Key Features](#-key-features)
-- [System Architecture](#-system-architecture)
-- [Tech Stack](#-tech-stack)
-- [Database & Blockchain Schema](#-database--blockchain-schema)
-- [API Reference](#-api-reference)
-- [Installation & Setup Guide](#-installation--setup-guide)
-  - [Backend Setup (Laravel 11)](#1-backend-setup-laravel-11)
-  - [Frontend Setup (Flutter)](#2-frontend-setup-flutter-mobile)
-- [Screenshots & UI Walkthrough](#-screenshots--ui-walkthrough)
-- [Development Team](#-development-team)
+## 📌 Daftar Isi
+- [Gambaran Umum Proyek](#-gambaran-umum-proyek)
+- [Fitur Utama](#-fitur-utama)
+- [Arsitektur Sistem](#-arsitektur-sistem)
+- [Teknologi yang Digunakan (Tech Stack)](#-teknologi-yang-digunakan-tech-stack)
+- [Skema Basis Data & Blockchain](#-skema-basis-data--blockchain)
+- [Dokumentasi REST API](#-dokumentasi-rest-api)
+- [Panduan Instalasi & Menjalankan Proyek](#-panduan-instalasi--menjalankan-proyek)
+  - [Konfigurasi Backend (Laravel 11)](#1-konfigurasi-backend-laravel-11)
+  - [Konfigurasi Frontend (Flutter Mobile)](#2-konfigurasi-frontend-flutter-mobile)
+- [Tangkapan Layar Antarmuka (UI Walkthrough)](#-tangkapan-layar-antarmuka-ui-walkthrough)
+- [Tim Pengembang](#-tim-pengembang)
 
 ---
 
-## 📖 Project Overview
+## 📖 Gambaran Umum Proyek
 
-In smartphone repair enterprises, managing high-value OEM spare parts (OLED displays, lithium-ion battery packs, micro-soldered motherboards) requires rigorous inventory control and proof of component authenticity. Counterfeit and gray-market replacement parts cause high device return rates and customer distrust.
+Pada industri reparasi smartphone dan perangkat elektronik, pengelolaan stok suku cadang bernilai tinggi (seperti layar OLED original, baterai lithium-ion berkapasitas besar, dan *motherboard*) sering kali menghadapi kendala serius terkait suku cadang palsu, komponen bekas daur ulang (*recycled IC*), serta pencatatan stok manual yang rawan manipulasi. Hal ini berakibat pada tingginya angka pengembalian barang (*return rate*) dan hilangnya kepercayaan pelanggan.
 
-**SmartFix** resolves this challenge by combining a responsive **Flutter** cross-platform mobile client with a **Laravel 11 REST API** backed by an on-chain **SHA-256 Cryptographic Blockchain Ledger**. Every part registered or moved within the supply chain computes an immutable cryptographic hash linked to the previous block, creating a verifiable chain of custody that cannot be altered retroactively without invalidating the entire ledger.
+**SmartFix** hadir memberikan solusi komprehensif dengan mengintegrasikan aplikasi mobile berbasis **Flutter** dan REST API modern **Laravel 11**, yang diperkuat oleh mekanisme **Buku Besar Kriptografi Blockchain SHA-256**. Setiap suku cadang yang didaftarkan ke sistem akan mengkalkulasi tanda tangan digital (*hash*) unik yang terikat secara matematis dengan blok sebelumnya. Dengan demikian, seluruh riwayat mutasi barang bersifat transparan, dapat diaudit, dan tidak dapat diubah secara sepihak (*tamper-proof*).
 
 ---
 
-## 🚀 Key Features
+## 🚀 Fitur Utama
 
-### 1. Secure Authentication & Session Management
-- **Laravel Sanctum Token Authentication**: Issues lightweight, cryptographically secure bearer tokens for stateful mobile API communication.
-- **Biometric Authentication Integration**: Supports fingerprint and facial recognition login using device biometric hardware (`local_auth`).
-- **Persistent Storage**: Sessions survive application restarts using encrypted local key-value persistence (`shared_preferences`).
-- **Graceful Logout**: Securely revokes tokens from memory and local storage, clearing user sessions and returning safely to the login screen.
+### 1. Autentikasi & Pengelolaan Sesi Aman
+- **Laravel Sanctum Token Authentication**: Menerbitkan *plain-text bearer token* yang aman untuk mengamankan setiap transaksi data antara aplikasi mobile dan server backend.
+- **Dukungan Biometrik (Fingerprint & Face ID)**: Kemudahan masuk ke sistem menggunakan pemindai sidik jari atau pengenalan wajah perangkat keras smartphone (`local_auth`).
+- **Penyimpanan Sesi Persisten**: Sesi login teknisi tetap tersimpan aman di penyimpanan lokal perangkat (`shared_preferences`) sehingga tidak perlu login ulang saat aplikasi dibuka kembali.
+- **Mekanisme Logout Aman**: Menghapus seluruh kredensial token baik dari memori aktif maupun *storage* lokal sebelum mengarahkan pengguna kembali ke halaman login.
 
-### 2. Real-Time Inventory Management
-- **Debounced Live Search**: Real-time querying by component name or Serial/SKU with a 350ms debounce timer to prevent redundant API queries.
-- **Horizontal Category Filtering**: Instant filtering across five hardware categories: `All`, `Display`, `Battery`, `Machine`, and `Accessories`.
-- **Dynamic Stock Badges**: Real-time visual status tags (`In Stock`, `Low Stock`, `Out of Stock`) with dynamic inventory KPI counters.
-- **Currency Localization**: Native Indonesian Rupiah (IDR) numerical formatting (e.g., `Rp 1.450.000`).
-- **Pull-to-Refresh**: Seamless inventory synchronization with backend records via `RefreshIndicator`.
+### 2. Manajemen Inventaris Real-Time
+- **Pencarian Cepat dengan Debounce**: Pencarian cerdas berdasarkan nama komponen atau nomor seri/SKU dengan jeda *debounce* 350ms guna menghemat *bandwidth* dan beban *database*.
+- **Filter Kategori Horisontal**: Pengelompokan praktis dalam 5 kategori: `All`, `Display`, `Battery`, `Machine`, dan `Accessories`.
+- **Lencana Status Stok Dinamis**: Indikator visual otomatis berdasarkan sisa kuantitas barang (`In Stock`, `Low Stock`, `Out of Stock`) yang terintegrasi dengan kartu ringkasan KPI di bagian atas layar.
+- **Format Rupiah Standar (IDR)**: Penulisan harga nominal otomatis menggunakan pemisah ribuan standar Indonesia (contoh: `Rp 1.450.000`).
+- **Fitur Tarik-untuk-Memperbarui (Pull-to-Refresh)**: Memperbarui daftar suku cadang langsung dari basis data server kapan saja.
 
-### 3. Cryptographic Blockchain Verification (SHA-256)
-- **Immutable Block Linking**: Each registered part computes a hash combining:
+### 3. Verifikasi Integritas Blockchain (SHA-256)
+- **Keterikatan Blok Kriptografi**: Setiap penambahan suku cadang menghitung nilai *hash* menggunakan rumus deterministik:
   $$\text{Hash}_n = \text{SHA-256}(\text{Hash}_{n-1} \parallel \text{Serial} \parallel \text{Name} \parallel \text{Category} \parallel \text{Stock} \parallel \text{Price} \parallel \text{UserID} \parallel \text{Timestamp})$$
-- **Ledger Chain Explorer**: Interactive timeline interface displaying block height, action types (`PART_REGISTERED`, `QUALITY_INSPECTION`, `STOCK_TRANSFER`), previous hashes, current hashes, and signing nodes.
-- **One-Touch Chain Integrity Audit**: Mathematical traversal that validates ledger continuity and flags compromised or broken hash links.
-- **Single Component Verifier**: Diagnostic tool allowing technicians to paste any QR signature, serial, or hash to confirm OEM authenticity.
+- **Penjelajah Rantai Blok (Ledger Chain Explorer)**: Tampilan visual berbasis *timeline* yang memperlihatkan tinggi blok (*height*), jenis aksi (`PART_REGISTERED`, `QUALITY_INSPECTION`, `STOCK_TRANSFER`), *previous hash*, *current hash*, serta node teknisi penandatangan.
+- **Audit Mandiri Integritas Rantai**: Algoritma verifikasi menyeluruh untuk memastikan apakah seluruh blok saling terhubung tanpa ada manipulasi data.
+- **Alat Verifikasi Komponen Mandiri**: Memungkinkan teknisi memasukkan kode hash atau nomor seri untuk mengonfirmasi keaslian komponen OEM di bengkel kerja.
 
-### 4. Hardware Utilities & Field Tools Hub
-- **AI Repair Assistant**: Interactive diagnostics helper for motherboard short-circuit analysis and schematic pinout guidance.
-- **Currency & Timezone Converter**: Live multi-currency conversion (IDR, USD, EUR) and Indonesian service timezone synchronizer (WIB, WITA, WIT).
-- **GPS Courier Tracking**: Live delivery dispatch map using `flutter_map` (OpenStreetMap) and `geolocator`.
-- **Sensor Calibration Minigame**: Interactive hardware sensor diagnostic testing device accelerometer and gyroscope inputs.
+### 4. Pusat Utilitas & Diagnostik Teknisi (Tools Hub)
+- **AI Repair Assistant**: Asisten interaktif berbasis AI untuk diagnosa korsleting sirkuit *motherboard* dan panduan skematik jalur IC smartphone.
+- **Konverter Mata Uang & Zona Waktu**: Kalkulator kurs valuta asing (IDR, USD, EUR) serta penyelarasan waktu operasional bengkel antarwilayah (WIB, WITA, WIT).
+- **Pelacakan Kurir Logistik GPS**: Visualisasi peta pengiriman suku cadang menggunakan OpenStreetMap (`flutter_map`) dan GPS (`geolocator`).
+- **Sensor Calibration Minigame**: Uji kalibrasi sensor perangkat keras (akselerometer dan giroskop) melalui *minigame* interaktif.
 
-### 5. Modern Industrial-Tech User Interface
-- **Dark Charcoal Theme**: High-contrast, eye-friendly workshop palette (`#1E1E1E` background, `#262626` surface, `#14B8A6` teal accents).
-- **Responsive Layout**: Designed for mobile form factors with null-safe, clean architecture patterns.
+### 5. Desain Antarmuka Industrial-Tech
+- **Tema Gelap Khusus Bengkel Reparasi**: Paduan warna kontras tinggi yang nyaman di mata (*dark charcoal* `#1E1E1E`, *slate surface* `#262626`, dan aksen *teal/cyan* `#14B8A6`).
+- **Arsitektur Kode Bersih & Null-Safe**: Mengikuti pedoman tata kelola kode Dart terkini tanpa adanya *deprecation warnings*.
 
 ---
 
-## 🏗 System Architecture
+## 🏗 Arsitektur Sistem
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                 SmartFix Mobile App (Flutter)               │
+│                 Aplikasi Mobile SmartFix (Flutter)          │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌───────────────┐  │
-│  │   Auth / Bio    │ │ Inventory List  │ │ Tools Hub /   │  │
-│  │   Credentials   │ │ & Search / FAB  │ │ Blockchain UI │  │
+│  │ Autentikasi     │ │ Inventaris Real-│ │ Pusat Utilitas│  │
+│  │ Sanctum & Bio   │ │ Time & Form FAB │ │ & Blockchain  │  │
 │  └────────┬────────┘ └────────┬────────┘ └───────┬───────┘  │
 └───────────┼───────────────────┼──────────────────┼──────────┘
             │                   │                  │
             │ HTTP (JSON)       │ Bearer Token     │ SHA-256
             ▼                   ▼                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 Laravel 11 REST API Engine                  │
+│                 Mesin REST API Backend (Laravel 11)         │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌───────────────┐  │
-│  │  Sanctum Auth   │ │ Inventory CRUD  │ │ Blockchain    │  │
-│  │   Middleware    │ │   Controller    │ │ Hashing Logic │  │
+│  │ Middleware Auth │ │ Kontroler CRUD  │ │ Logika Hash   │  │
+│  │ Sanctum Guard   │ │ Inventaris      │ │ Blockchain    │  │
 │  └────────┬────────┘ └────────┬────────┘ └───────┬───────┘  │
 └───────────┼───────────────────┼──────────────────┼──────────┘
             │                   │                  │
             ▼                   ▼                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 Relational & Ledger Storage                 │
+│                 Penyimpanan Relasional & Audit Log          │
 │  ┌──────────────┐     ┌──────────────┐    ┌──────────────┐  │
-│  │    users     │     │    parts     │    │  blockchain  │  │
-│  │    table     │     │    table     │    │  _logs table │  │
+│  │    Tabel     │     │    Tabel     │    │    Tabel     │  │
+│  │    users     │     │    parts     │    │blockchain_log│  │
 │  └──────────────┘     └──────────────┘    └──────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 💻 Tech Stack
+## 💻 Teknologi yang Digunakan (Tech Stack)
 
-### Frontend (Mobile)
+### Frontend (Mobile App)
 - **Framework**: [Flutter](https://flutter.dev) (v3.13+ / 3.x)
-- **Language**: [Dart](https://dart.dev) (v3.13+ null-safe)
-- **Key Packages**:
-  - `http: ^1.6.0` — REST API networking & Sanctum bearer header injection
-  - `shared_preferences: ^2.5.3` — Session token & credential persistence
-  - `local_auth: ^3.0.2` — Biometric authentication (fingerprint / Face ID)
-  - `flutter_map: ^8.3.2` & `latlong2: ^0.10.1` — OpenStreetMap GPS logistics
-  - `sensors_plus: ^7.1.1` — Accelerometer & gyroscope sensor diagnostics
-  - `flutter_local_notifications: ^22.3.1` — Local offline push notifications
+- **Bahasa Pemrograman**: [Dart](https://dart.dev) (v3.13+ Null-Safety)
+- **Paket & Dependensi Utama**:
+  - `http: ^1.6.0` — Komunikasi jaringan REST API & injeksi header otentikasi Sanctum.
+  - `shared_preferences: ^2.5.3` — Penyimpanan persisten lokal untuk token dan sesi teknisi.
+  - `local_auth: ^3.0.2` — Akses sensor biometrik (sidik jari & pengenalan wajah).
+  - `flutter_map: ^8.3.2` & `latlong2: ^0.10.1` — Peta pelacakan GPS berbasis OpenStreetMap.
+  - `sensors_plus: ^7.1.1` — Pembacaan sensor akselerometer & giroskop perangkat keras.
+  - `flutter_local_notifications: ^22.3.1` — Notifikasi sistem lokal secara *offline*.
 
-### Backend (REST API)
+### Backend (REST API Engine)
 - **Framework**: [Laravel 11](https://laravel.com)
-- **Language**: PHP 8.2 / 8.3
-- **Authentication**: Laravel Sanctum (Personal Access Tokens)
-- **Database**: MySQL 8.x / MariaDB (or SQLite for development)
-- **Cryptography**: Native PHP `hash('sha256', ...)` with ISO-8601 deterministic serialization
+- **Bahasa Pemrograman**: PHP 8.2 / 8.3
+- **Otentikasi API**: Laravel Sanctum (Personal Access Tokens)
+- **Basis Data**: MySQL 8.x / MariaDB (atau SQLite untuk kebutuhan pengujian)
+- **Kriptografi**: Fungsi bawaan PHP `hash('sha256', ...)` dengan format serialisasi string ISO-8601.
 
-### Development Tools
-- **Environment**: Laragon / Apache / Nginx
-- **API Testing**: Postman / Bruno / cURL
+### Alat Pengembangan & Lingkungan Kerja
+- **Web Server & Stack**: Laragon / Apache / Nginx
+- **Pengujian API**: Postman / Bruno / cURL
 - **Version Control**: Git & GitHub
 
 ---
 
-## 🗄 Database & Blockchain Schema
+## 🗄 Skema Basis Data & Blockchain
 
-### 1. `users` Table
-| Column | Type | Constraints | Description |
+### 1. Tabel `users`
+| Kolom | Tipe Data | Aturan / Batasan | Deskripsi |
 |---|---|---|---|
-| `id` | BigInt | PK, Auto Increment | Unique user identifier |
-| `name` | Varchar(255) | Not Null | Technician full name |
-| `email` | Varchar(255) | Unique, Not Null | Technician login email |
-| `password` | Varchar(255) | Not Null | Bcrypt encrypted password hash |
-| `role` | Varchar(50) | Default: `'technician'` | System authorization role |
-| `timestamps` | Timestamp | Nullable | Created & updated timestamps |
+| `id` | BigInt | Primary Key, Auto Increment | Identifikasi unik pengguna |
+| `name` | Varchar(255) | Not Null | Nama lengkap teknisi |
+| `email` | Varchar(255) | Unique, Not Null | Alamat surel untuk login |
+| `password` | Varchar(255) | Not Null | Hash kata sandi terenkripsi (Bcrypt) |
+| `role` | Varchar(50) | Default: `'technician'` | Hak akses peran pengguna |
+| `timestamps` | Timestamp | Nullable | Waktu pembuatan & pembaruan data |
 
-### 2. `parts` Table
-| Column | Type | Constraints | Description |
+### 2. Tabel `parts`
+| Kolom | Tipe Data | Aturan / Batasan | Deskripsi |
 |---|---|---|---|
-| `id` | BigInt | PK, Auto Increment | Component identifier |
-| `serial_number` | Varchar(255) | Unique, Not Null | Cryptographic hardware SKU |
-| `name` | Varchar(255) | Not Null | Component commercial description |
-| `category` | Varchar(100) | Not Null | `Display`, `Battery`, `Machine`, `Accessories` |
-| `stock_quantity`| Integer | Min: 0, Not Null | Available stock in warehouse |
-| `base_price_idr`| Decimal(14,2)| Min: 0, Not Null | Price in Indonesian Rupiah |
-| `timestamps` | Timestamp | Nullable | Created & updated timestamps |
+| `id` | BigInt | Primary Key, Auto Increment | Identifikasi unik suku cadang |
+| `serial_number` | Varchar(255) | Unique, Not Null | Nomor seri atau kode SKU komponen |
+| `name` | Varchar(255) | Not Null | Nama komersial suku cadang |
+| `category` | Varchar(100) | Not Null | Kategori (`Display`, `Battery`, dsb.) |
+| `stock_quantity`| Integer | Min: 0, Not Null | Kuantitas unit suku cadang tersedia |
+| `base_price_idr`| Decimal(14,2)| Min: 0, Not Null | Harga dasar dalam satuan Rupiah (IDR) |
+| `timestamps` | Timestamp | Nullable | Waktu pembuatan & pembaruan data |
 
-### 3. `blockchain_logs` Table
-| Column | Type | Constraints | Description |
+### 3. Tabel `blockchain_logs`
+| Kolom | Tipe Data | Aturan / Batasan | Deskripsi |
 |---|---|---|---|
-| `id` | BigInt | PK, Auto Increment | Block height index |
-| `part_id` | BigInt | FK -> `parts.id` | Associated component record |
-| `action` | Varchar(100) | Not Null | `PART_REGISTERED`, `STOCK_TRANSFER`, etc. |
-| `previous_hash` | Char(64) | Not Null | SHA-256 hash of parent block |
-| `current_hash`  | Char(64) | Not Null | SHA-256 cryptographic block signature |
-| `user_id` | BigInt | FK -> `users.id` | Signing technician node ID |
-| `timestamps` | Timestamp | Nullable | Deterministic ISO-8601 block timestamp |
+| `id` | BigInt | Primary Key, Auto Increment | Indeks urutan blok (*block height*) |
+| `part_id` | BigInt | Foreign Key -> `parts.id` | ID suku cadang yang dicatat |
+| `action` | Varchar(100) | Not Null | Jenis aksi (`PART_REGISTERED`, dsb.) |
+| `previous_hash` | Char(64) | Not Null | Hash SHA-256 dari blok induk pendahulu |
+| `current_hash`  | Char(64) | Not Null | Tanda tangan hash SHA-256 blok ini |
+| `user_id` | BigInt | Foreign Key -> `users.id` | Teknisi penandatangan transaksi |
+| `timestamps` | Timestamp | Nullable | Stempel waktu ISO-8601 deterministik |
 
 ---
 
-## 📡 API Reference
+## 📡 Dokumentasi REST API
 
-All protected endpoints require the HTTP header:  
+Seluruh *endpoint* berstatus **Protected** mewajibkan penyertaan HTTP Header:  
 `Authorization: Bearer <sanctum_token>`
 
-| Method | Endpoint | Access | Request Body | Description |
+| Method | Endpoint | Akses | Parameter / Body | Deskripsi Singkat |
 |---|---|---|---|---|
-| `POST` | `/api/login` | Public | `{ "email": "...", "password": "..." }` | Authenticates technician & issues Sanctum token |
-| `GET` | `/api/inventory` | Protected | Query params: `?search=...&category=...` | Fetches filtered inventory list |
-| `POST` | `/api/inventory` | Protected | `{ "serial_number": "...", "name": "...", "category": "...", "stock_quantity": 10, "base_price_idr": 150000 }` | Adds new part, calculates SHA-256 block, returns `201 Created` |
+| `POST` | `/api/login` | Publik | `{ "email": "...", "password": "..." }` | Otentikasi teknisi & penerbitan token Sanctum |
+| `GET` | `/api/inventory` | Terlindungi | Query: `?search=...&category=...` | Mengambil daftar inventaris dengan filter |
+| `POST` | `/api/inventory` | Terlindungi | `{ "serial_number": "...", "name": "...", "category": "...", "stock_quantity": 10, "base_price_idr": 150000 }` | Menambah suku cadang, menghitung hash blok, mengembalikan status `201 Created` |
 
 ---
 
-## 🛠 Installation & Setup Guide
+## 🛠 Panduan Instalasi & Menjalankan Proyek
 
-### Prerequisites
-- [PHP](https://www.php.net/) >= 8.2 & [Composer](https://getcomposer.org/)
-- [MySQL](https://www.mysql.com/) database server (via Laragon / XAMPP)
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (v3.13+)
-- Physical Android/iOS device or Emulator
+### Kebutuhan Sistem (Prerequisites)
+- [PHP](https://www.php.net/) versi 8.2 atau lebih tinggi & [Composer](https://getcomposer.org/)
+- Database Server [MySQL](https://www.mysql.com/) (tersedia di Laragon / XAMPP)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (versi 3.13 ke atas)
+- Perangkat Android fisik dengan USB Debugging aktif atau Emulator Android
 
 ---
 
-### 1. Backend Setup (Laravel 11)
+### 1. Konfigurasi Backend (Laravel 11)
 
-1. **Clone repository & navigate to backend directory**:
+1. **Buka terminal dan masuk ke direktori backend**:
    ```bash
    cd c:/laragon/www/smartfix-backend
    ```
 
-2. **Install PHP dependencies**:
+2. **Pasang seluruh dependensi PHP via Composer**:
    ```bash
    composer install
    ```
 
-3. **Configure Environment Variables**:
+3. **Atur Berkas Konfigurasi Lingkungan (`.env`)**:
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
-   Open `.env` and verify your database connection:
+   Buka berkas `.env` lalu sesuaikan kredensial basis data Anda:
    ```env
    DB_CONNECTION=mysql
    DB_HOST=127.0.0.1
@@ -214,13 +214,13 @@ All protected endpoints require the HTTP header:
    DB_PASSWORD=
    ```
 
-4. **Run Database Migrations**:
+4. **Jalankan Migrasi Skema Basis Data**:
    ```bash
    php artisan migrate:fresh
    ```
 
-5. **Seed Initial Technician User**:
-   Run `php artisan tinker` and execute:
+5. **Inisialisasi Akun Teknisi Pertama (Seeding)**:
+   Buka `php artisan tinker` dan eksekusi perintah berikut:
    ```php
    App\Models\User::create([
        'name' => 'Agustya Ezha Kurniawan',
@@ -230,71 +230,71 @@ All protected endpoints require the HTTP header:
    ]);
    ```
 
-6. **Start the Laravel Development Server**:
+6. **Jalankan Server Lokal Laravel**:
    ```bash
    php artisan serve --host=127.0.0.1 --port=8000
    ```
-   > The API will be available at: `http://127.0.0.1:8000/api`
+   > Endpoint API siap diakses melalui: `http://127.0.0.1:8000/api`
 
 ---
 
-### 2. Frontend Setup (Flutter Mobile)
+### 2. Konfigurasi Frontend (Flutter Mobile)
 
-1. **Navigate to the Flutter project directory**:
+1. **Masuk ke folder proyek Flutter**:
    ```bash
    cd ta
    ```
 
-2. **Install Flutter packages**:
+2. **Unduh seluruh paket dan dependensi Flutter**:
    ```bash
    flutter pub get
    ```
 
-3. **Network Configuration Note**:
-   - If running on **Windows Desktop / Web**: Default `http://127.0.0.1:8000/api` in `lib/core/api_service.dart` works directly.
-   - If running on **Android Emulator**: Change base URL in `lib/core/api_service.dart` to `http://10.0.2.2:8000/api`.
-   - If running on a **Physical Device**: Change base URL to your computer's local Wi-Fi IP (e.g. `http://192.168.1.15:8000/api`).
+3. **Catatan Pengaturan Alamat Jaringan (IP Backend)**:
+   - Jika dijalankan pada **Windows Desktop / Chrome Web**: Alamat default `http://127.0.0.1:8000/api` di `lib/core/api_service.dart` dapat langsung digunakan.
+   - Jika dijalankan pada **Android Emulator**: Ubah basis URL pada `lib/core/api_service.dart` menjadi `http://10.0.2.2:8000/api`.
+   - Jika dijalankan pada **Perangkat Smartphone Fisik**: Ubah basis URL ke alamat IP lokal laptop/PC Anda dalam jaringan Wi-Fi yang sama (contoh: `http://192.168.1.15:8000/api`).
 
-4. **Run Static Analysis (Quality Check)**:
+4. **Lakukan Pengujian Kualitas Kode (Static Analysis)**:
    ```bash
    flutter analyze
    ```
 
-5. **Launch the Application**:
+5. **Jalankan Aplikasi ke Perangkat**:
    ```bash
    flutter run
    ```
 
-6. **Default Test Credentials**:
-   - **Email**: `technician@smartfix.com`
-   - **Password**: `password123`
+6. **Kredensial Default untuk Pengujian**:
+   - **Surel / Email**: `technician@smartfix.com`
+   - **Kata Sandi**: `password123`
 
 ---
 
-## 📱 Screenshots & UI Walkthrough
+## 📱 Tangkapan Layar Antarmuka (UI Walkthrough)
 
-| 1. Industrial-Tech Login | 2. Real-time Inventory Dashboard | 3. Add Part & Blockchain Proof |
+| 1. Halaman Masuk (Login) | 2. Dasbor Inventaris Real-Time | 3. Tambah Suku Cadang & Bukti Hash |
 |:---:|:---:|:---:|
-| Email/password form with Sanctum authentication, visibility toggle, and biometric option | Category chips, debounced search bar, KPI cards, and SHA-256 verified badges | Structured form with SKU auto-generator and cryptographic hash dialog |
+| Formulir email & kata sandi dengan autentikasi Sanctum, sakelar visibilitas, dan opsi sidik jari | Chip kategori, bilah pencarian debounced, kartu metrik KPI, dan lencana verifikasi SHA-256 | Formulir terstruktur dengan pembuat SKU otomatis dan dialog bukti blok kriptografi |
 
-| 4. Ledger Chain Explorer | 5. Cryptographic Hash Verifier | 6. Technical Utilities Hub |
+| 4. Penjelajah Rantai Blok | 5. Verifikasi Keaslian Komponen | 6. Pusat Utilitas Teknisi |
 |:---:|:---:|:---:|
-| Chronological block timeline with previous/current SHA-256 signatures | Single-part hash verifier against OEM root certificates | Central launcher for AI Assistant, Forex & Time, GPS, and sensor minigame |
+| Tampilan kronologis blok transaksi dengan tanda tangan SHA-256 previous & current | Validasi tanda tangan QR/hash terhadap sertifikat root suku cadang resmi OEM | Peluncur terpadu untuk AI Asisten, valas & zona waktu, pelacakan GPS, dan minigame sensor |
 
 ---
 
-## 👥 Development Team
+## 👥 Tim Pengembang
 
-This project was designed, developed, and documented for the **Tugas Akhir — Pemrograman Aplikasi Mobile (Semester 5)** by:
+Proyek ini dirancang, dibangun, dan didokumentasikan untuk memenuhi tugas mata kuliah **Tugas Akhir — Pemrograman Aplikasi Mobile (Semester 5)** oleh:
 
-| Photo | Name | Student ID (NIM) | Role & Contribution |
+| Pasfoto | Nama Mahasiswa | Nomor Induk Mahasiswa (NIM) | Peran & Kontribusi |
 |:---:|:---|:---:|:---|
-| 👨‍💻 | **Hanggara Winasis** | `124240125` | • Flutter UI Architecture & State Management<br>• Technical Utilities & Sensor Integration<br>• System Documentation & QA Testing |
-| 👨‍💻 | **Agustya Ezha Kurniawan** | `124240142` | • Laravel 11 Backend & REST API Architecture<br>• Sanctum Authentication & Database Migrations<br>• SHA-256 Blockchain Cryptographic Ledger Design |
+| 👨‍💻 | **Hanggara Winasis** | `124240125` | • Perancangan Antarmuka Flutter & State Management<br>• Integrasi Pusat Utilitas & Sensor Perangkat Keras<br>• Dokumentasi Teknis Sistem & Pengujian Aplikasi |
+| 👨‍💻 | **Agustya Ezha Kurniawan** | `124240142` | • Arsitektur Backend Laravel 11 & REST API Engine<br>• Autentikasi Laravel Sanctum & Migrasi Basis Data<br>• Perancangan Logika Buku Besar Kriptografi SHA-256 |
 
 ---
 
 <p align="center">
-  <b>SmartFix Mobile</b> • Final Academic Project • 2026<br>
-  Built with ❤️ using Flutter & Laravel
+  <b>SmartFix Mobile</b> • Proyek Akademik Tugas Akhir • 2026<br>
+  Dikembangkan dengan penuh dedikasi menggunakan Flutter & Laravel
 </p>
