@@ -485,7 +485,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
 
                 // Category Dropdown
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   dropdownColor: _surfaceColor,
                   style: const TextStyle(color: _textPrimary, fontSize: 14),
                   decoration: _inputDecoration(
