@@ -18,14 +18,14 @@ class _AddPartScreenState extends State<AddPartScreen> {
   final TextEditingController _stockController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
 
-  String _selectedCategory = 'Display';
+  String _selectedCategory = 'Layar';
   bool _isSubmitting = false;
 
   final List<String> _categories = [
-    'Display',
-    'Battery',
-    'Machine',
-    'Accessories',
+    'Layar',
+    'Baterai',
+    'Mesin',
+    'Aksesoris',
   ];
 
   // Theme Constants (matching SmartFix Industrial-Tech design system)
@@ -74,7 +74,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
     final int? parsedStock = int.tryParse(_stockController.text.trim());
 
     if (parsedPrice == null || parsedStock == null) {
-      _showSnackbar('Invalid number format in price or stock quantity', isError: true);
+      _showSnackbar('Format angka pada harga atau stok tidak valid', isError: true);
       return;
     }
 
@@ -167,7 +167,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Part Registered',
+                'Part Didaftarkan',
                 style: TextStyle(
                   color: _textPrimary,
                   fontSize: 20,
@@ -176,7 +176,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'SHA-256 Ledger Block Created',
+                'Blok Ledger SHA-256 Dibuat',
                 style: TextStyle(
                   color: _teal,
                   fontSize: 12,
@@ -201,16 +201,16 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildSummaryRow('Part Name', partData['name'].toString()),
+                      _buildSummaryRow('Nama Part', partData['name'].toString()),
                       const Divider(color: _cardBorderColor, height: 16),
-                      _buildSummaryRow('Serial / SKU', partData['serial_number'].toString()),
+                      _buildSummaryRow('Nomor Seri / SKU', partData['serial_number'].toString()),
                       const Divider(color: _cardBorderColor, height: 16),
-                      _buildSummaryRow('Category', partData['category'].toString()),
+                      _buildSummaryRow('Kategori', partData['category'].toString()),
                       const Divider(color: _cardBorderColor, height: 16),
-                      _buildSummaryRow('Stock Quantity', '${partData['stock_quantity']} pcs'),
+                      _buildSummaryRow('Jumlah Stok', '${partData['stock_quantity']} pcs'),
                       const Divider(color: _cardBorderColor, height: 16),
                       _buildSummaryRow(
-                        'Base Price',
+                        'Harga Dasar',
                         _formatCurrency(partData['base_price_idr'] as num),
                         isTeal: true,
                       ),
@@ -235,7 +235,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                           const Icon(Icons.link, color: _teal, size: 16),
                           const SizedBox(width: 6),
                           const Text(
-                            'Cryptographic Blockchain Hash',
+                            'Hash Blockchain Kriptografi',
                             style: TextStyle(
                               color: _teal,
                               fontSize: 11,
@@ -290,7 +290,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                           },
                           icon: const Icon(Icons.copy, size: 14, color: _teal),
                           label: const Text(
-                            'Copy Full Hash',
+                            'Salin Hash Penuh',
                             style: TextStyle(color: _teal, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                           style: OutlinedButton.styleFrom(
@@ -323,7 +323,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   elevation: 0,
                 ),
                 child: const Text(
-                  'Back to Dashboard',
+                  'Kembali ke Dasbor',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
@@ -370,7 +370,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Add New Part',
+              'Tambah Part Baru',
               style: TextStyle(
                 color: _textPrimary,
                 fontSize: 18,
@@ -378,7 +378,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
               ),
             ),
             Text(
-              'Register part with on-chain cryptographic provenance',
+              'Daftarkan part dengan perlindungan kriptografi on-chain',
               style: TextStyle(color: _textSecondary, fontSize: 11),
             ),
           ],
@@ -416,7 +416,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Blockchain Protected Part',
+                              'Part Terlindungi Blockchain',
                               style: TextStyle(
                                 color: _textPrimary,
                                 fontWeight: FontWeight.bold,
@@ -425,7 +425,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Every entry computes an immutable SHA-256 block linked to the technician session.',
+                              'Setiap entri menghitung blok SHA-256 yang tidak dapat diubah yang terkait dengan sesi teknisi.',
                               style: TextStyle(
                                 color: _textSecondary,
                                 fontSize: 11,
@@ -444,12 +444,12 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   controller: _serialController,
                   style: const TextStyle(color: _textPrimary),
                   decoration: _inputDecoration(
-                    label: 'Serial Number / SKU',
-                    hint: 'e.g. SN-DISP-10492',
+                    label: 'Nomor Seri / SKU',
+                    hint: 'mis. SN-LAYAR-10492',
                     icon: Icons.qr_code_2,
                   ).copyWith(
                     suffixIcon: Tooltip(
-                      message: 'Auto-generate SKU',
+                      message: 'Buat SKU Otomatis',
                       child: IconButton(
                         icon: const Icon(Icons.auto_mode, color: _teal, size: 20),
                         onPressed: _generateSerialNumber,
@@ -458,7 +458,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
-                      return 'Serial number is required';
+                      return 'Nomor seri wajib diisi';
                     }
                     return null;
                   },
@@ -470,13 +470,13 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   controller: _nameController,
                   style: const TextStyle(color: _textPrimary),
                   decoration: _inputDecoration(
-                    label: 'Part Name',
-                    hint: 'e.g. iPhone 14 Pro OLED Display Assembly',
+                    label: 'Nama Part',
+                    hint: 'mis. Layar OLED iPhone 14 Pro',
                     icon: Icons.precision_manufacturing_outlined,
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
-                      return 'Part name is required';
+                      return 'Nama part wajib diisi';
                     }
                     return null;
                   },
@@ -489,8 +489,8 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   dropdownColor: _surfaceColor,
                   style: const TextStyle(color: _textPrimary, fontSize: 14),
                   decoration: _inputDecoration(
-                    label: 'Category',
-                    hint: 'Select Category',
+                    label: 'Kategori',
+                    hint: 'Pilih Kategori',
                     icon: Icons.category_outlined,
                   ),
                   items: _categories.map((cat) {
@@ -516,17 +516,17 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   style: const TextStyle(color: _textPrimary),
                   decoration: _inputDecoration(
-                    label: 'Stock Quantity',
-                    hint: 'e.g. 15',
+                    label: 'Jumlah Stok',
+                    hint: 'mis. 15',
                     icon: Icons.inventory_2_outlined,
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
-                      return 'Stock quantity is required';
+                      return 'Jumlah stok wajib diisi';
                     }
                     final n = int.tryParse(val.trim());
                     if (n == null || n < 0) {
-                      return 'Enter a valid positive number';
+                      return 'Masukkan angka positif yang valid';
                     }
                     return null;
                   },
@@ -540,8 +540,8 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   style: const TextStyle(color: _textPrimary),
                   decoration: _inputDecoration(
-                    label: 'Base Price (IDR)',
-                    hint: 'e.g. 1450000',
+                    label: 'Harga Dasar (IDR)',
+                    hint: 'mis. 1450000',
                     icon: Icons.payments_outlined,
                   ).copyWith(
                     prefixText: 'Rp  ',
@@ -553,11 +553,11 @@ class _AddPartScreenState extends State<AddPartScreen> {
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
-                      return 'Base price is required';
+                      return 'Harga dasar wajib diisi';
                     }
                     final n = num.tryParse(val.trim());
                     if (n == null || n <= 0) {
-                      return 'Enter a valid price in IDR';
+                      return 'Masukkan harga valid dalam IDR';
                     }
                     return null;
                   },
@@ -605,7 +605,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                                 Icon(Icons.add_task, color: Colors.white, size: 20),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Register & Secure Part',
+                                  'Daftarkan & Amankan Part',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,

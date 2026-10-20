@@ -62,8 +62,8 @@ class _LoginScreenState extends State<LoginScreen>
 
     NotificationHelper().showNotification(
       id: 101,
-      title: 'Welcome Back, $username!',
-      body: 'You are securely logged into SmartFix Mobile.',
+      title: 'Selamat Datang, $username!',
+      body: 'Anda berhasil masuk dengan aman ke SmartFix Mobile.',
     );
 
     if (!mounted) return;
@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen>
       _showError(e.toString().replaceFirst('Exception: ', ''));
     } catch (e) {
       if (!mounted) return;
-      _showError('Login failed. Please check your credentials or network connection.');
+      _showError('Login gagal. Silakan periksa kredensial atau koneksi jaringan Anda.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen>
     final savedUsername = await _authHelper.getUsername();
     final username = _emailController.text.trim().isNotEmpty
         ? _emailController.text.trim().split('@').first
-        : (savedUsername.isNotEmpty ? savedUsername : 'Technician');
+        : (savedUsername.isNotEmpty ? savedUsername : 'Teknisi');
 
     final existingToken = _authHelper.sessionToken;
     final token = (existingToken != null && existingToken.isNotEmpty)
@@ -201,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Smartphone Repair & Inventory System',
+                      'Sistem Inventaris & Perbaikan Smartphone',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -217,17 +217,17 @@ class _LoginScreenState extends State<LoginScreen>
                       style: const TextStyle(color: _textPrimary),
                       decoration: _inputDecoration(
                         label: 'Email',
-                        hint: 'you@example.com',
+                        hint: 'anda@contoh.com',
                         icon: Icons.email_outlined,
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
-                          return 'Please enter your email';
+                          return 'Silakan masukkan email Anda';
                         }
                         final emailRegex = RegExp(
                             r'^[\w\.\-]+@[\w\.\-]+\.[a-zA-Z]{2,}$');
                         if (!emailRegex.hasMatch(val.trim())) {
-                          return 'Please enter a valid email address';
+                          return 'Silakan masukkan alamat email yang valid';
                         }
                         return null;
                       },
@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen>
                       obscureText: _obscurePassword,
                       style: const TextStyle(color: _textPrimary),
                       decoration: _inputDecoration(
-                        label: 'Password',
+                        label: 'Kata Sandi',
                         hint: '••••••••',
                         icon: Icons.lock_outline,
                       ).copyWith(
@@ -257,10 +257,10 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) {
-                          return 'Please enter your password';
+                          return 'Silakan masukkan kata sandi Anda';
                         }
                         if (val.length < 4) {
-                          return 'Password must be at least 4 characters';
+                          return 'Kata sandi minimal 4 karakter';
                         }
                         return null;
                       },
@@ -303,7 +303,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                 )
                               : const Text(
-                                  'Sign In',
+                                  'Masuk',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -324,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen>
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           child: Text(
-                            'OR',
+                            'ATAU',
                             style: TextStyle(
                               color: _textSecondary.withValues(alpha: 0.6),
                               fontSize: 12,

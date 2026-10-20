@@ -39,22 +39,22 @@ class _MainLayoutState extends State<MainLayout> {
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            label: 'Dasbor',
           ),
           NavigationDestination(
             icon: Icon(Icons.handyman_outlined),
             selectedIcon: Icon(Icons.handyman),
-            label: 'Tools',
+            label: 'Alat',
           ),
           NavigationDestination(
             icon: Icon(Icons.rate_review_outlined),
             selectedIcon: Icon(Icons.rate_review),
-            label: 'Feedback',
+            label: 'Umpan Balik',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'Profil',
           ),
         ],
       ),

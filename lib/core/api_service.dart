@@ -16,11 +16,11 @@ class ApiService {
 
   /// Set this to `true` when testing on a physical smartphone over local Wi-Fi.
   /// Set to `false` when testing on an Android Studio Emulator.
-  static const bool isPhysicalDevice = false;
+  static const bool isPhysicalDevice = true;
 
   /// Development machine's local IPv4 address (e.g. '192.168.1.5' or '192.168.100.12').
   /// Used when testing on physical devices connected to the same Wi-Fi network.
-  static const String localNetworkIp = '192.168.100.12';
+  static const String localNetworkIp = '192.168.18.6';
 
   /// Port on which the Laravel backend is serving (default: 8000).
   static const String port = '8000';

@@ -18,12 +18,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Sign Out'),
-        content: const Text('Are you sure you want to log out of SmartFix Mobile?'),
+        title: const Text('Konfirmasi Keluar'),
+        content: const Text('Apakah Anda yakin ingin keluar dari SmartFix Mobile?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () async {
@@ -36,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               );
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Sign Out'),
+            child: const Text('Keluar'),
           ),
         ],
       ),
@@ -46,11 +46,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final username = _authHelper.currentUsername ?? 'Senior Technician';
+    final username = _authHelper.currentUsername ?? 'Teknisi Senior';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Technician Profile'),
+        title: const Text('Profil Teknisi'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -103,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Lead Hardware Specialist • Station 4',
+                      'Spesialis Perangkat Keras Utama • Stasiun 4',
                       style: TextStyle(
                         fontSize: 13,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -117,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'Session Active',
+                        'Sesi Aktif',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -135,11 +135,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Performance / Inventory Stats Row
             Row(
               children: [
-                _buildStatItem('Repairs Done', '142', Icons.build, Colors.blue),
+                _buildStatItem('Perbaikan Selesai', '142', Icons.build, Colors.blue),
                 const SizedBox(width: 8),
-                _buildStatItem('Verified Parts', '389', Icons.verified, Colors.green),
+                _buildStatItem('Part Terverifikasi', '389', Icons.verified, Colors.green),
                 const SizedBox(width: 8),
-                _buildStatItem('Pending Tickets', '5', Icons.hourglass_top, Colors.amber),
+                _buildStatItem('Tiket Tertunda', '5', Icons.hourglass_top, Colors.amber),
               ],
             ),
 
@@ -155,16 +155,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   SwitchListTile(
-                    title: const Text('Push Notifications'),
-                    subtitle: const Text('Receive low stock and ticket alerts'),
+                    title: const Text('Notifikasi Push'),
+                    subtitle: const Text('Terima peringatan stok menipis dan tiket'),
                     secondary: const Icon(Icons.notifications_active_outlined),
                     value: _notificationsEnabled,
                     onChanged: (val) => setState(() => _notificationsEnabled = val),
                   ),
                   const Divider(height: 1),
                   SwitchListTile(
-                    title: const Text('Biometric Authentication'),
-                    subtitle: const Text('Use Fingerprint or Face ID for fast login'),
+                    title: const Text('Autentikasi Biometrik'),
+                    subtitle: const Text('Gunakan Sidik Jari atau Face ID untuk masuk cepat'),
                     secondary: const Icon(Icons.fingerprint),
                     value: _biometricEnabled,
                     onChanged: (val) => setState(() => _biometricEnabled = val),
@@ -180,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: _handleLogout,
               icon: const Icon(Icons.logout, color: Colors.red),
               label: const Text(
-                'Log Out',
+                'Keluar',
                 style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
               style: FilledButton.styleFrom(

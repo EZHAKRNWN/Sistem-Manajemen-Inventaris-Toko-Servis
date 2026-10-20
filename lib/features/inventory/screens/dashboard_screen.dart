@@ -17,8 +17,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ApiService _apiService = ApiService();
   final AuthHelper _authHelper = AuthHelper();
 
-  String _selectedCategory = 'All';
-  String _technicianName = 'Technician';
+  String _selectedCategory = 'Semua';
+  String _technicianName = 'Teknisi';
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -26,11 +26,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Timer? _debounceTimer;
 
   final List<String> _categories = [
-    'All',
-    'Display',
-    'Battery',
-    'Machine',
-    'Accessories',
+    'Semua',
+    'Layar',
+    'Baterai',
+    'Mesin',
+    'Aksesoris',
   ];
 
   // Industrial-Tech Color Palette
@@ -131,19 +131,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Icon(Icons.logout_rounded, color: Colors.redAccent, size: 22),
               SizedBox(width: 8),
               Text(
-                'Confirm Logout',
+                'Konfirmasi Keluar',
                 style: TextStyle(color: _textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           content: const Text(
-            'Are you sure you want to securely end your technician session and clear local credentials?',
+            'Apakah Anda yakin ingin mengakhiri sesi teknisi dan menghapus kredensial lokal?',
             style: TextStyle(color: _textSecondary, fontSize: 13),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(false),
-              child: const Text('Cancel', style: TextStyle(color: _textSecondary)),
+              child: const Text('Batal', style: TextStyle(color: _textSecondary)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogCtx).pop(true),
@@ -152,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -265,7 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Icon(Icons.lock_clock, size: 10, color: _teal),
                       SizedBox(width: 4),
                       Text(
-                        'Sanctum Authenticated',
+                        'Autentikasi Sanctum',
                         style: TextStyle(
                           color: _teal,
                           fontSize: 10,
@@ -312,7 +312,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 4,
         icon: const Icon(Icons.add, size: 22),
         label: const Text(
-          'Add Part',
+          'Tambah Part',
           style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.3),
         ),
       ),
@@ -332,7 +332,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onChanged: _onSearchChanged,
                 style: const TextStyle(color: _textPrimary, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'Search spare parts by name or serial...',
+                  hintText: 'Cari suku cadang berdasarkan nama atau seri...',
                   hintStyle: TextStyle(color: _textSecondary.withValues(alpha: 0.6)),
                   prefixIcon: const Icon(Icons.search, color: _teal, size: 22),
                   suffixIcon: _searchController.text.isNotEmpty
@@ -455,7 +455,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             CircularProgressIndicator(color: _teal),
             SizedBox(height: 16),
             Text(
-              'Loading secure ledger items...',
+              'Memuat data buku besar aman...',
               style: TextStyle(color: _textSecondary, fontSize: 13),
             ),
           ],
@@ -473,7 +473,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Icon(Icons.cloud_off_rounded, size: 54, color: Colors.redAccent),
               const SizedBox(height: 12),
               const Text(
-                'Failed to Connect to SmartFix API',
+                'Gagal Menghubungkan ke API SmartFix',
                 style: TextStyle(color: _textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -486,7 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ElevatedButton.icon(
                 onPressed: _fetchInventory,
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Retry Connection'),
+                label: const Text('Coba Lagi'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _teal,
                   foregroundColor: Colors.white,
@@ -507,14 +507,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icon(Icons.inventory_outlined, size: 56, color: _textSecondary.withValues(alpha: 0.5)),
             const SizedBox(height: 12),
             const Text(
-              'No spare parts found',
+              'Suku cadang tidak ditemukan',
               style: TextStyle(color: _textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
               _searchController.text.isNotEmpty
-                  ? 'Try searching for a different keyword or SKU.'
-                  : 'Tap the "+" button below to register a new part.',
+                  ? 'Coba cari dengan kata kunci atau SKU yang berbeda.'
+                  : 'Tekan tombol "+" di bawah untuk mendaftarkan suku cadang baru.',
               style: const TextStyle(color: _textSecondary, fontSize: 12),
             ),
           ],
@@ -548,15 +548,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (stock == 0) {
       stockBadgeBg = Colors.redAccent.withValues(alpha: 0.15);
       stockBadgeText = Colors.redAccent;
-      stockLabel = 'Out of Stock';
+      stockLabel = 'Habis';
     } else if (stock <= 3) {
       stockBadgeBg = Colors.amber.withValues(alpha: 0.15);
       stockBadgeText = Colors.amber;
-      stockLabel = 'Low: $stock pcs';
+      stockLabel = 'Sisa: $stock pcs';
     } else {
       stockBadgeBg = _tealDark.withValues(alpha: 0.2);
       stockBadgeText = _teal;
-      stockLabel = 'In Stock: $stock pcs';
+      stockLabel = 'Stok: $stock pcs';
     }
 
     return Card(
@@ -677,7 +677,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Icon(Icons.shield_outlined, size: 12, color: _teal),
                       SizedBox(width: 4),
                       Text(
-                        'SHA-256 Verified',
+                        'Terverifikasi SHA-256',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,

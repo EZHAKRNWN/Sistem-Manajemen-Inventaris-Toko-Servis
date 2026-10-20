@@ -18,24 +18,24 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   final _authHelper = AuthHelper();
 
   int _rating = 5;
-  String _selectedCategory = 'App Performance & Usability';
-  String _selectedSeverity = 'Medium';
+  String _selectedCategory = 'Kinerja & Kegunaan Aplikasi';
+  String _selectedSeverity = 'Sedang (Hambatan alur kerja)';
   bool _isSubmitting = false;
-  String _technicianName = 'Technician';
+  String _technicianName = 'Teknisi';
 
   final List<String> _categories = [
-    'App Performance & Usability',
-    'Inventory & Parts Management',
-    'Barcode, QR & Blockchain Scanner',
-    'GPS Delivery & Location Tracking',
-    'Bug Report / Crash Diagnostic',
-    'Feature Request & Workflow Proposal',
+    'Kinerja & Kegunaan Aplikasi',
+    'Manajemen Inventaris & Part',
+    'Pemindai Barcode, QR & Blockchain',
+    'Pengiriman GPS & Pelacakan Lokasi',
+    'Laporan Bug / Diagnostik Crash',
+    'Permintaan Fitur & Proposal Alur Kerja',
   ];
 
   final List<String> _severityLevels = [
-    'Low (Minor cosmetic / Suggestion)',
-    'Medium (Workflow friction)',
-    'High (Critical blocker / Data issue)',
+    'Rendah (Kosmetik minor / Saran)',
+    'Sedang (Hambatan alur kerja)',
+    'Tinggi (Pemblokir kritis / Masalah data)',
   ];
 
   @override
@@ -64,15 +64,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   String _getRatingLabel(int rating) {
     switch (rating) {
       case 5:
-        return 'Exceptional — Highly efficient for repair shop operations';
+        return 'Luar Biasa — Sangat efisien untuk operasional bengkel';
       case 4:
-        return 'Good — Reliable tool for daily workshop tasks';
+        return 'Bagus — Alat yang dapat diandalkan untuk tugas harian';
       case 3:
-        return 'Average — Functional but needs minor workflow improvements';
+        return 'Cukup — Fungsional tetapi butuh sedikit perbaikan alur kerja';
       case 2:
-        return 'Fair — Encountered operational friction or slow responses';
+        return 'Kurang — Menemui hambatan operasional atau respon lambat';
       case 1:
-        return 'Critical — Significant blockers impede service tasks';
+        return 'Kritis — Masalah besar menghambat tugas perbaikan';
       default:
         return '';
     }
@@ -91,8 +91,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     // Show local notification as feedback submission receipt
     await NotificationHelper().showNotification(
       id: 201,
-      title: 'Feedback Logged (Ticket $ticketNumber)',
-      body: 'Your service shop evaluation has been recorded into the SmartFix diagnostic system.',
+      title: 'Umpan Balik Dicatat (Tiket $ticketNumber)',
+      body: 'Evaluasi bengkel perbaikan Anda telah direkam ke dalam sistem diagnostik SmartFix.',
     );
 
     if (mounted) {
@@ -101,13 +101,13 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.check_circle, color: Color(0xFF14B8A6), size: 48),
-          title: const Text('Feedback Submitted!'),
+          title: const Text('Umpan Balik Terkirim!'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Thank you, $_technicianName! Your evaluation and bug report have been logged under Ticket #$ticketNumber.',
+                'Terima kasih, $_technicianName! Evaluasi dan laporan bug Anda telah dicatat di Tiket #$ticketNumber.',
                 style: const TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 12),
@@ -125,14 +125,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         const Icon(Icons.confirmation_number_outlined, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          'Ticket Ref: $ticketNumber',
+                          'Ref Tiket: $ticketNumber',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Category: $_selectedCategory • Severity: $_selectedSeverity',
+                      'Kategori: $_selectedCategory • Tingkat Keparahan: $_selectedSeverity',
                       style: TextStyle(
                         fontSize: 11,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -153,10 +153,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 setState(() {
                   _rating = 5;
                   _selectedCategory = _categories.first;
-                  _selectedSeverity = 'Medium (Workflow friction)';
+                  _selectedSeverity = 'Sedang (Hambatan alur kerja)';
                 });
               },
-              child: const Text('Done'),
+              child: const Text('Selesai'),
             ),
           ],
         ),
@@ -170,7 +170,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App Feedback & Bug Report'),
+        title: const Text('Umpan Balik Aplikasi & Laporan Bug'),
         centerTitle: false,
       ),
       body: SingleChildScrollView(
@@ -205,7 +205,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         const Icon(Icons.build_circle, color: Color(0xFF0F766E), size: 22),
                         const SizedBox(width: 8),
                         Text(
-                          'SmartFix Workshop Operations Hub',
+                          'Pusat Operasi Bengkel SmartFix',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -216,12 +216,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Service Shop Performance & Bug Diagnostics',
+                      'Kinerja Bengkel Servis & Diagnostik Bug',
                       style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Help us optimize spare parts inventory tracking, repair time estimation, and shop workflows for technicians.',
+                      'Bantu kami mengoptimalkan pelacakan inventaris suku cadang, estimasi waktu perbaikan, dan alur kerja bengkel untuk teknisi.',
                       style: TextStyle(
                         fontSize: 12,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -245,7 +245,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   child: Column(
                     children: [
                       const Text(
-                        'Overall Repair Shop App Experience',
+                        'Pengalaman Keseluruhan Aplikasi Bengkel Perbaikan',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 6),
@@ -282,7 +282,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
               // ── Category Dropdown ─────────────────────────────────────────
               Text(
-                'Feedback Category',
+                'Kategori Umpan Balik',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -308,7 +308,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
               // ── Severity Level (If applicable) ────────────────────────────
               Text(
-                'Issue Impact / Severity',
+                'Dampak Masalah / Keparahan',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -334,26 +334,26 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
               // ── Title / Summary ───────────────────────────────────────────
               Text(
-                'Issue Summary / Subject',
+                'Ringkasan Masalah / Subjek',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  hintText: 'e.g., Barcode scanner takes multiple attempts on small camera modules',
+                  hintText: 'mis., Pemindai barcode butuh beberapa percobaan pada modul kamera kecil',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.short_text_rounded),
                 ),
                 validator: (val) =>
-                    (val == null || val.trim().isEmpty) ? 'Please enter a brief summary' : null,
+                    (val == null || val.trim().isEmpty) ? 'Silakan masukkan ringkasan singkat' : null,
               ),
 
               const SizedBox(height: 16),
 
               // ── Detailed Experience / Bug Observations ─────────────────────
               Text(
-                'Detailed Experience & Observations',
+                'Pengalaman & Observasi Detail',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -362,12 +362,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 maxLines: 4,
                 decoration: InputDecoration(
                   hintText:
-                      'Describe the repair shop situation, error messages encountered, or how the feature behaved during shop hours...',
+                      'Deskripsikan situasi bengkel, pesan error, atau bagaimana fitur bekerja...',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   alignLabelWithHint: true,
                 ),
                 validator: (val) => (val == null || val.trim().isEmpty)
-                    ? 'Please provide detailed observations'
+                    ? 'Silakan berikan observasi detail'
                     : null,
               ),
 
@@ -375,7 +375,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
               // ── Suggestions for App Improvement ────────────────────────────
               Text(
-                'Suggestions for Workshop Efficiency',
+                'Saran untuk Efisiensi Bengkel',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -384,12 +384,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 maxLines: 3,
                 decoration: InputDecoration(
                   hintText:
-                      'What changes or additions would help technicians repair phones faster and manage inventory better?',
+                      'Perubahan atau tambahan apa yang dapat membantu teknisi memperbaiki lebih cepat dan mengatur inventaris lebih baik?',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   alignLabelWithHint: true,
                 ),
                 validator: (val) => (val == null || val.trim().isEmpty)
-                    ? 'Please share suggestions to improve the app'
+                    ? 'Silakan bagikan saran untuk meningkatkan aplikasi'
                     : null,
               ),
 
@@ -408,7 +408,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Device telemetry (OS, network latency, app build) is bundled automatically for diagnostic review.',
+                        'Telemetri perangkat (OS, latensi jaringan, build aplikasi) digabungkan otomatis untuk ulasan diagnostik.',
                         style: TextStyle(
                           fontSize: 11,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -432,7 +432,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       )
                     : const Icon(Icons.send_rounded),
                 label: Text(
-                  _isSubmitting ? 'Logging Ticket...' : 'Submit Shop Feedback & Report',
+                  _isSubmitting ? 'Mencatat Tiket...' : 'Kirim Umpan Balik Bengkel & Laporan',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 style: FilledButton.styleFrom(

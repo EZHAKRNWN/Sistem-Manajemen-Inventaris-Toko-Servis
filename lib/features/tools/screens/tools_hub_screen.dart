@@ -21,11 +21,11 @@ class ToolsHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final toolGroups = [
       {
-        'category': 'Cryptographic Provenance & Security',
+        'category': 'Keamanan & Asal Kriptografi',
         'items': [
           {
-            'title': 'Blockchain Part Verifier',
-            'subtitle': 'Verify cryptographic SHA-256 hashes and audit supply chain ledger blocks',
+            'title': 'Pemverifikasi Part Blockchain',
+            'subtitle': 'Verifikasi hash SHA-256 kriptografi dan audit blok ledger rantai pasokan',
             'badge': 'SHA-256',
             'badgeColor': _teal,
             'icon': Icons.security_rounded,
@@ -35,11 +35,11 @@ class ToolsHubScreen extends StatelessWidget {
         ],
       },
       {
-        'category': 'Intelligence & Diagnostics',
+        'category': 'Kecerdasan & Diagnostik',
         'items': [
           {
-            'title': 'AI Repair Assistant',
-            'subtitle': 'Motherboard diagnostics, pinout guidance, and repair troubleshooting',
+            'title': 'Asisten Perbaikan AI',
+            'subtitle': 'Diagnostik motherboard, panduan pinout, dan pemecahan masalah perbaikan',
             'badge': 'AI Diagnostics',
             'badgeColor': Colors.purpleAccent,
             'icon': Icons.smart_toy_outlined,
@@ -47,8 +47,8 @@ class ToolsHubScreen extends StatelessWidget {
             'screen': const AiAssistantScreen(),
           },
           {
-            'title': 'Currency & Timezone Converter',
-            'subtitle': 'Live exchange rates for IDR, USD, EUR and multi-region service times',
+            'title': 'Konverter Mata Uang & Waktu',
+            'subtitle': 'Nilai tukar langsung untuk IDR, USD, EUR, dan waktu layanan multi-wilayah',
             'badge': 'Forex & Time',
             'badgeColor': Colors.lightBlueAccent,
             'icon': Icons.currency_exchange_rounded,
@@ -58,11 +58,11 @@ class ToolsHubScreen extends StatelessWidget {
         ],
       },
       {
-        'category': 'Logistics & Hardware Sensors',
+        'category': 'Logistik & Sensor Perangkat Keras',
         'items': [
           {
-            'title': 'GPS Courier Tracking',
-            'subtitle': 'Live field location tracking via OpenStreetMap & Geolocator',
+            'title': 'Pelacakan Kurir GPS',
+            'subtitle': 'Pelacakan lokasi lapangan langsung via OpenStreetMap & Geolocator',
             'badge': 'LBS GPS',
             'badgeColor': Colors.tealAccent,
             'icon': Icons.map_outlined,
@@ -70,8 +70,8 @@ class ToolsHubScreen extends StatelessWidget {
             'screen': const MapTrackingScreen(),
           },
           {
-            'title': 'Sensor Inventory Sorter',
-            'subtitle': 'Calibrate & test device gyroscope and accelerometer sensors',
+            'title': 'Penyortir Inventaris Sensor',
+            'subtitle': 'Kalibrasi & uji sensor giroskop dan akselerometer perangkat',
             'badge': 'Sensors',
             'badgeColor': Colors.amber,
             'icon': Icons.sports_esports_outlined,
@@ -92,7 +92,7 @@ class ToolsHubScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Technical Utilities',
+              'Utilitas Teknis',
               style: TextStyle(
                 color: _textPrimary,
                 fontSize: 18,
@@ -100,7 +100,7 @@ class ToolsHubScreen extends StatelessWidget {
               ),
             ),
             Text(
-              'Engineering tools, diagnostics & cryptography',
+              'Alat rekayasa, diagnostik & kriptografi',
               style: TextStyle(color: _textSecondary, fontSize: 11),
             ),
           ],
@@ -133,7 +133,7 @@ class ToolsHubScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Workshop Operations Toolkit',
+                        'Toolkit Operasi Bengkel',
                         style: TextStyle(
                           color: _textPrimary,
                           fontWeight: FontWeight.bold,
@@ -142,7 +142,7 @@ class ToolsHubScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'All diagnostic, logistics, and verification modules are operational.',
+                        'Semua modul diagnostik, logistik, dan verifikasi beroperasi.',
                         style: TextStyle(color: _textSecondary, fontSize: 11),
                       ),
                     ],
