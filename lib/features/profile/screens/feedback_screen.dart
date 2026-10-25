@@ -1,5 +1,20 @@
-import 'dart:math';
+// ============================================================================
+// FITUR: FORM SARAN & KESAN MATA KULIAH PAM (FEEDBACK SCREEN)
+// ----------------------------------------------------------------------------
+// Kegunaan untuk Presentasi:
+// 1. Memenuhi Kriteria Tugas Akhir PAM: Menyediakan form ulasan, saran, dan kesan mahasiswa
+//    terhadap proses pembelajaran mata kuliah Pemrograman Aplikasi Mobile.
+// 2. Rating Interaktif 1-5 Bintang: Dilengkapi deskripsi bobot evaluasi otomatis.
+// 3. Penyimpanan Data Offline (SharedPreferences): Menyimpan review mahasiswa secara persisten
+//    di storage lokal gawai sehingga ulasan tidak hilang saat aplikasi ditutup.
+// 4. Integrasi Push Notification: Memicu notifikasi lokal offline saat formulir berhasil disimpan.
+// 5. Riwayat Ulasan: Menampilkan preview kartu ulasan yang telah disimpan sebelumnya.
+// ============================================================================
+
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartfix_mobile/core/auth_helper.dart';
 import 'package:smartfix_mobile/core/notification_helper.dart';
 
@@ -11,132 +26,151 @@ class FeedbackScreen extends StatefulWidget {
 }
 
 class _FeedbackScreenState extends State<FeedbackScreen> {
+  // Global key untuk validasi form input
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _suggestionsController = TextEditingController();
+
+  // Text controller untuk nama mahasiswa, kesan, dan saran
+  final _studentNameController = TextEditingController();
+  final _kesanController = TextEditingController();
+  final _saranController = TextEditingController();
   final _authHelper = AuthHelper();
 
+  // Nilai rating bintang (default: 5 bintang)
   int _rating = 5;
-  String _selectedCategory = 'Kinerja & Kegunaan Aplikasi';
-  String _selectedSeverity = 'Sedang (Hambatan alur kerja)';
   bool _isSubmitting = false;
-  String _technicianName = 'Teknisi';
 
-  final List<String> _categories = [
-    'Kinerja & Kegunaan Aplikasi',
-    'Manajemen Inventaris & Part',
-    'Pemindai Barcode, QR & Blockchain',
-    'Pengiriman GPS & Pelacakan Lokasi',
-    'Laporan Bug / Diagnostik Crash',
-    'Permintaan Fitur & Proposal Alur Kerja',
-  ];
-
-  final List<String> _severityLevels = [
-    'Rendah (Kosmetik minor / Saran)',
-    'Sedang (Hambatan alur kerja)',
-    'Tinggi (Pemblokir kritis / Masalah data)',
-  ];
+  // Data feedback tersimpan dari SharedPreferences
+  Map<String, dynamic>? _savedFeedback;
 
   @override
   void initState() {
     super.initState();
-    _loadTechnicianName();
+    _loadInitialData();
   }
 
-  Future<void> _loadTechnicianName() async {
+  Future<void> _loadInitialData() async {
     final name = await _authHelper.getUsername();
+    final prefs = await SharedPreferences.getInstance();
+    final savedJson = prefs.getString('saved_pam_feedback');
+    if (savedJson != null) {
+      try {
+        _savedFeedback = jsonDecode(savedJson) as Map<String, dynamic>;
+      } catch (_) {}
+    }
+
     if (mounted) {
       setState(() {
-        _technicianName = name;
+        _studentNameController.text = name;
+        if (_savedFeedback != null) {
+          _kesanController.text = _savedFeedback!['kesan'] ?? '';
+          _saranController.text = _savedFeedback!['saran'] ?? '';
+          _rating = _savedFeedback!['rating'] ?? 5;
+        }
       });
     }
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _suggestionsController.dispose();
+    _studentNameController.dispose();
+    _kesanController.dispose();
+    _saranController.dispose();
     super.dispose();
   }
 
   String _getRatingLabel(int rating) {
     switch (rating) {
       case 5:
-        return 'Luar Biasa — Sangat efisien untuk operasional bengkel';
+        return '⭐⭐⭐⭐⭐ Sangat Bermanfaat & Menantang (Luar Biasa)';
       case 4:
-        return 'Bagus — Alat yang dapat diandalkan untuk tugas harian';
+        return '⭐⭐⭐⭐ Menambah Wawasan Pengembangan Mobile (Bagus)';
       case 3:
-        return 'Cukup — Fungsional tetapi butuh sedikit perbaikan alur kerja';
+        return '⭐⭐⭐ Cukup Informatif dan Aplikatif (Cukup)';
       case 2:
-        return 'Kurang — Menemui hambatan operasional atau respon lambat';
+        return '⭐⭐ Membutuhkan Lebih Banyak Praktik Langsung (Kurang)';
       case 1:
-        return 'Kritis — Masalah besar menghambat tugas perbaikan';
+        return '⭐ Materi Terlalu Padat / Butuh Penyesuaian (Perlu Evaluasi)';
       default:
         return '';
     }
   }
 
+  /// FITUR: Menyimpan Ulasan Mahasiswa ke SharedPreferences & Menampilkan Push Notification
   Future<void> _submitFeedback() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
-    await Future.delayed(const Duration(milliseconds: 650));
+    await Future.delayed(const Duration(milliseconds: 600));
 
-    // Generate random mock diagnostic ticket ID
-    final randomId = 1000 + Random().nextInt(9000);
-    final ticketNumber = 'SF-$randomId';
+    final feedbackData = {
+      'student_name': _studentNameController.text.trim(),
+      'kesan': _kesanController.text.trim(),
+      'saran': _saranController.text.trim(),
+      'rating': _rating,
+      'submitted_at': DateTime.now().toIso8601String(),
+    };
 
-    // Show local notification as feedback submission receipt
+    // 1. Simpan ke Local Storage SharedPreferences secara permanen
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_pam_feedback', jsonEncode(feedbackData));
+
+    // 2. Memicu notifikasi push lokal offline di smartphone
     await NotificationHelper().showNotification(
-      id: 201,
-      title: 'Umpan Balik Dicatat (Tiket $ticketNumber)',
-      body: 'Evaluasi bengkel perbaikan Anda telah direkam ke dalam sistem diagnostik SmartFix.',
+      id: 202,
+      title: 'Saran & Kesan PAM Tersimpan!',
+      body: 'Terima kasih atas saran dan kesan Anda untuk mata kuliah Pemrograman Aplikasi Mobile.',
     );
 
     if (mounted) {
-      setState(() => _isSubmitting = false);
+      setState(() {
+        _isSubmitting = false;
+        _savedFeedback = feedbackData;
+      });
+
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.check_circle, color: Color(0xFF14B8A6), size: 48),
-          title: const Text('Umpan Balik Terkirim!'),
+          icon: const Icon(
+            Icons.check_circle,
+            color: Color(0xFF14B8A6),
+            size: 48,
+          ),
+          title: const Text('Saran & Kesan Terkirim!'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Terima kasih, $_technicianName! Evaluasi dan laporan bug Anda telah dicatat di Tiket #$ticketNumber.',
+                'Terima kasih, ${_studentNameController.text.trim()}! Saran dan kesan untuk mata kuliah Pemrograman Aplikasi Mobile berhasil dicatat ke sistem.',
                 style: const TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Theme.of(context).colorScheme.primary
+                      .withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary
+                        .withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.confirmation_number_outlined, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ref Tiket: $ticketNumber',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ],
+                    Text(
+                      'Refleksi Tugas Akhir PAM:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Kategori: $_selectedCategory • Tingkat Keparahan: $_selectedSeverity',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    const Text(
+                      '✓ Login Enkripsi & Biometrik\n✓ SQLite & REST API Web Service\n✓ LBS (Peta & Rute Gudang)\n✓ Konversi Kurs & Waktu (WIB, WITA, WIT, London)\n✓ Sensor Accelerometer & Gyroscope\n✓ Diagnostik AI & LLM\n✓ Ledger Blockchain Sederhana',
+                      style: TextStyle(fontSize: 11, height: 1.4),
                     ),
                   ],
                 ),
@@ -145,17 +179,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           ),
           actions: [
             FilledButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                _titleController.clear();
-                _descriptionController.clear();
-                _suggestionsController.clear();
-                setState(() {
-                  _rating = 5;
-                  _selectedCategory = _categories.first;
-                  _selectedSeverity = 'Sedang (Hambatan alur kerja)';
-                });
-              },
+              onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Selesai'),
             ),
           ],
@@ -170,31 +194,30 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Umpan Balik Aplikasi & Laporan Bug'),
+        title: const Text('Saran & Kesan PAM'),
         centerTitle: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Workshop Diagnostics Banner ───────────────────────────────
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF0F766E).withValues(alpha: 0.15),
-                      const Color(0xFF14B8A6).withValues(alpha: 0.05),
+                      const Color(0xFF0F766E).withValues(alpha: 0.25),
+                      const Color(0xFF14B8A6).withValues(alpha: 0.08),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFF0F766E).withValues(alpha: 0.3),
+                    color: const Color(0xFF0F766E).withValues(alpha: 0.4),
                   ),
                 ),
                 child: Column(
@@ -202,26 +225,43 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.build_circle, color: Color(0xFF0F766E), size: 22),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pusat Operasi Bengkel SmartFix',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF14B8A6)
+                                .withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.school_rounded,
+                            color: Color(0xFF14B8A6),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Mata Kuliah: Pemrograman Aplikasi Mobile',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     const Text(
-                      'Kinerja Bengkel Servis & Diagnostik Bug',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      'Saran & Kesan Perkuliahan PAM',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Bantu kami mengoptimalkan pelacakan inventaris suku cadang, estimasi waktu perbaikan, dan alur kerja bengkel untuk teknisi.',
+                      'Sampaikan kesan selama mengikuti mata kuliah Pemrograman Aplikasi Mobile serta saran konstruktif untuk dosen pengampu dan asisten praktikum.',
                       style: TextStyle(
                         fontSize: 12,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -231,44 +271,52 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // ── Star Rating Section ───────────────────────────────────────
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                  side: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.5,
+                    ),
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
                       const Text(
-                        'Pengalaman Keseluruhan Aplikasi Bengkel Perbaikan',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        'Tingkat Kepuasan & Pengalaman Belajar PAM',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(5, (index) {
                           final starIndex = index + 1;
                           return IconButton(
-                            iconSize: 38,
+                            iconSize: 36,
                             icon: Icon(
-                              starIndex <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                              starIndex <= _rating
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
                               color: Colors.amber,
                             ),
-                            onPressed: () => setState(() => _rating = starIndex),
+                            onPressed: () =>
+                                setState(() => _rating = starIndex),
                           );
                         }),
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         _getRatingLabel(_rating),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.primary,
                         ),
@@ -278,172 +326,217 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
-
-              // ── Category Dropdown ─────────────────────────────────────────
-              Text(
-                'Kategori Umpan Balik',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
-                items: _categories
-                    .map((cat) => DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat, style: const TextStyle(fontSize: 14)),
-                        ))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedCategory = val);
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                ),
-              ),
-
               const SizedBox(height: 16),
 
-              // ── Severity Level (If applicable) ────────────────────────────
               Text(
-                'Dampak Masalah / Keparahan',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: _severityLevels[1],
-                items: _severityLevels
-                    .map((sev) => DropdownMenuItem(
-                          value: sev,
-                          child: Text(sev, style: const TextStyle(fontSize: 13)),
-                        ))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedSeverity = val);
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.report_problem_outlined),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                'Nama Mahasiswa / Pengguna',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Title / Summary ───────────────────────────────────────────
-              Text(
-                'Ringkasan Masalah / Subjek',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               TextFormField(
-                controller: _titleController,
+                controller: _studentNameController,
                 decoration: InputDecoration(
-                  hintText: 'mis., Pemindai barcode butuh beberapa percobaan pada modul kamera kecil',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.short_text_rounded),
+                  hintText: 'Nama lengkap mahasiswa',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                 ),
-                validator: (val) =>
-                    (val == null || val.trim().isEmpty) ? 'Silakan masukkan ringkasan singkat' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Nama tidak boleh kosong'
+                    : null,
               ),
 
               const SizedBox(height: 16),
 
-              // ── Detailed Experience / Bug Observations ─────────────────────
               Text(
-                'Pengalaman & Observasi Detail',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                'Kesan Mata Kuliah Pemrograman Aplikasi Mobile',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               TextFormField(
-                controller: _descriptionController,
+                controller: _kesanController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  hintText:
-                      'Deskripsikan situasi bengkel, pesan error, atau bagaimana fitur bekerja...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintText: 'Bagikan kesan Anda selama mempelajari Flutter/Dart, arsitektur mobile, koneksi database SQLite/REST API, sensor perangkat, hingga integrasi kecerdasan buatan...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   alignLabelWithHint: true,
                 ),
-                validator: (val) => (val == null || val.trim().isEmpty)
-                    ? 'Silakan berikan observasi detail'
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Silakan isi kesan perkuliahan Anda'
                     : null,
               ),
 
               const SizedBox(height: 16),
 
-              // ── Suggestions for App Improvement ────────────────────────────
               Text(
-                'Saran untuk Efisiensi Bengkel',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                'Saran untuk Mata Kuliah & Dosen Pengampu',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               TextFormField(
-                controller: _suggestionsController,
-                maxLines: 3,
+                controller: _saranController,
+                maxLines: 4,
                 decoration: InputDecoration(
-                  hintText:
-                      'Perubahan atau tambahan apa yang dapat membantu teknisi memperbaiki lebih cepat dan mengatur inventaris lebih baik?',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintText: 'Saran dan masukan konstruktif untuk materi perkuliahan, alur praktikum, bimbingan projek akhir, maupun pengembangan kurikulum mobile berikutnya...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   alignLabelWithHint: true,
                 ),
-                validator: (val) => (val == null || val.trim().isEmpty)
-                    ? 'Silakan bagikan saran untuk meningkatkan aplikasi'
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Silakan isi saran untuk mata kuliah'
                     : null,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // ── Diagnostics Meta Info ──────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(10),
+              Card(
+                elevation: 0,
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 18, color: theme.colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Telemetri perangkat (OS, latensi jaringan, build aplikasi) digabungkan otomatis untuk ulasan diagnostik.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.4,
                     ),
-                  ],
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.verified_outlined,
+                            size: 18,
+                            color: Color(0xFF14B8A6),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Kriteria Tugas Akhir Terintegrasi:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _buildChecklistRow(
+                        'Konsep Projek Akhir: SmartFix Bengkel Smartphone',
+                      ),
+                      _buildChecklistRow(
+                        'Login Enkripsi Token & Session (Tanpa Firebase)',
+                      ),
+                      _buildChecklistRow(
+                        'Login Biometrik Fingerprint / Face ID',
+                      ),
+                      _buildChecklistRow(
+                        'Penyimpanan Lokal (SQLite) & Online (REST API)',
+                      ),
+                      _buildChecklistRow(
+                        'Web Service REST API & LBS Peta Gudang Part',
+                      ),
+                      _buildChecklistRow(
+                        'Bottom Nav: Profil (Ada Gambar), Saran & Kesan PAM, Logout',
+                      ),
+                      _buildChecklistRow(
+                        'Konversi Kurs (Min 3) & Konversi Waktu (WIB, WIT, WITA, London)',
+                      ),
+                      _buildChecklistRow(
+                        'Minimal 2 Sensor Hardware (Accelerometer & Gyroscope)',
+                      ),
+                      _buildChecklistRow(
+                        'Fitur AI LLM Asisten Teknisi Perbaikan',
+                      ),
+                      _buildChecklistRow(
+                        'Mini Game Tangkap Part Berbasis Kemiringan Sensor',
+                      ),
+                      _buildChecklistRow(
+                        'Fitur Pencarian & Pemilihan Kategori Inventaris',
+                      ),
+                      _buildChecklistRow('Notifikasi Mobile Berbasis Sistem'),
+                      _buildChecklistRow(
+                        'Fitur Audit & Verifikasi Part Blockchain Sederhana',
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // ── Submit Button ─────────────────────────────────────────────
               FilledButton.icon(
                 onPressed: _isSubmitting ? null : _submitFeedback,
                 icon: _isSubmitting
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.send_rounded),
                 label: Text(
-                  _isSubmitting ? 'Mencatat Tiket...' : 'Kirim Umpan Balik Bengkel & Laporan',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  _isSubmitting
+                      ? 'Menyimpan Saran & Kesan...'
+                      : 'Kirim Saran & Kesan Mata Kuliah',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
                   backgroundColor: const Color(0xFF0F766E),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildChecklistRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 14,
+            color: Color(0xFF14B8A6),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ),
+        ],
       ),
     );
   }

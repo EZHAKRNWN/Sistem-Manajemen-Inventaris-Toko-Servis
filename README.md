@@ -58,7 +58,7 @@ Pada industri reparasi smartphone dan perangkat elektronik, pengelolaan stok suk
 
 ### 4. Pusat Utilitas & Diagnostik Teknisi (Tools Hub)
 - **AI Repair Assistant**: Asisten interaktif berbasis AI untuk diagnosa korsleting sirkuit *motherboard* dan panduan skematik jalur IC smartphone.
-- **Konverter Mata Uang & Zona Waktu**: Kalkulator kurs valuta asing (IDR, USD, EUR) serta penyelarasan waktu operasional bengkel antarwilayah (WIB, WITA, WIT).
+- **Zona Waktu & Jam Kerja Suplier**: Sinkronisasi waktu operasional suplier suku cadang internasional (London, Shenzhen, Tokyo, New York) dan jam kerja bengkel antarwilayah (WIB, WITA, WIT).
 - **Pelacakan Kurir Logistik GPS**: Visualisasi peta pengiriman suku cadang menggunakan OpenStreetMap (`flutter_map`) dan GPS (`geolocator`).
 - **Sensor Calibration Minigame**: Uji kalibrasi sensor perangkat keras (akselerometer dan giroskop) melalui *minigame* interaktif.
 

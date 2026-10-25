@@ -1,4 +1,17 @@
+// ============================================================================
+// FITUR: ZONA WAKTU & JAM KERJA SUPLIER GLOBAL (WORLD CLOCK & LOGISTICS TIME ZONES)
+// ----------------------------------------------------------------------------
+// Kegunaan untuk Presentasi:
+// 1. Jam Dunia Real-Time: Sinkronisasi waktu detik-per-detik untuk zona waktu domestik (WIB, WITA, WIT).
+// 2. Sinkronisasi Jam Kerja Suplier Internasional:
+//    Menampilkan jam operasional suplier di London UK (dengan kalkulasi BST/Daylight Saving Time),
+//    China (CST UTC+8), Tokyo Jepang (JST UTC+9), dan New York (EST UTC-5).
+// 3. Konverter Waktu Interaktif (TimePicker): Memungkinkan simulasi jam untuk memastikan teknisi
+//    menghubungi distributor luar negeri pada jam kerja aktif mereka.
+// ============================================================================
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class CurrencyTimeConverterScreen extends StatefulWidget {
@@ -9,58 +22,45 @@ class CurrencyTimeConverterScreen extends StatefulWidget {
       _CurrencyTimeConverterScreenState();
 }
 
+typedef WorldClockScreen = CurrencyTimeConverterScreen;
+
 class _CurrencyTimeConverterScreenState
     extends State<CurrencyTimeConverterScreen> {
-  final TextEditingController _amountController =
-      TextEditingController(text: '100');
-  String _sourceCurrency = 'USD';
-
-  // Base exchange rates relative to 1 USD
-  final Map<String, double> _usdRates = {
-    'USD': 1.0,
-    'IDR': 15850.0,
-    'CNY': 7.24, // Chinese Yuan (Shenzhen/Guangzhou Parts Hub)
-    'EUR': 0.92,
-    'JPY': 152.4,
-    'SGD': 1.34,
-  };
-
-  // Currency metadata with symbols and region descriptions
-  final Map<String, Map<String, String>> _currencyInfo = {
-    'USD': {
-      'symbol': '\$',
-      'name': 'US Dollar',
-      'label': 'Global OEM Benchmark',
-    },
-    'IDR': {
-      'symbol': 'Rp',
-      'name': 'Indonesian Rupiah',
-      'label': 'Domestic Service Rate',
-    },
-    'CNY': {
-      'symbol': '¥',
-      'name': 'Chinese Yuan',
-      'label': 'Shenzhen / Guangzhou Spare Parts Hub',
-    },
-    'EUR': {
-      'symbol': '€',
-      'name': 'Euro',
-      'label': 'European Precision Tools',
-    },
-    'JPY': {
-      'symbol': '¥',
-      'name': 'Japanese Yen',
-      'label': 'SMD & Micro-soldering Equipment',
-    },
-    'SGD': {
-      'symbol': 'S\$',
-      'name': 'Singapore Dollar',
-      'label': 'Southeast Asia Distribution',
-    },
-  };
-
   late Timer _clockTimer;
   DateTime _currentTime = DateTime.now().toUtc();
+
+  TimeOfDay _interactiveSourceTime = const TimeOfDay(hour: 10, minute: 0);
+  String _interactiveSourceZone = 'WIB';
+
+  int get _londonOffset {
+    final now = DateTime.now().toUtc();
+    final year = now.year;
+    DateTime lastSunday(int month) {
+      var d = DateTime.utc(
+        year,
+        month + 1,
+        1,
+      ).subtract(const Duration(days: 1));
+      while (d.weekday != DateTime.sunday) {
+        d = d.subtract(const Duration(days: 1));
+      }
+      return d;
+    }
+
+    final bstStart = DateTime.utc(year, 3, lastSunday(3).day, 1);
+    final bstEnd = DateTime.utc(year, 10, lastSunday(10).day, 1);
+    return (now.isAfter(bstStart) && now.isBefore(bstEnd)) ? 1 : 0;
+  }
+
+  Map<String, int> get _allZoneOffsets => {
+    'WIB': 7,
+    'WITA': 8,
+    'WIT': 9,
+    'London': _londonOffset,
+    'Tiongkok (CST)': 8,
+    'Jepang (JST)': 9,
+    'AS Timur (EST)': -5,
+  };
 
   @override
   void initState() {
@@ -77,36 +77,7 @@ class _CurrencyTimeConverterScreenState
   @override
   void dispose() {
     _clockTimer.cancel();
-    _amountController.dispose();
     super.dispose();
-  }
-
-  double _convert(double amount, String targetCurrency) {
-    final baseInUsd = amount / (_usdRates[_sourceCurrency] ?? 1.0);
-    return baseInUsd * (_usdRates[targetCurrency] ?? 1.0);
-  }
-
-  String _formatCurrency(double value, String currency) {
-    if (currency == 'IDR') {
-      final formatted = value
-          .toStringAsFixed(0)
-          .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
-      return 'Rp $formatted';
-    } else if (currency == 'CNY') {
-      return '¥ ${value.toStringAsFixed(2)}';
-    } else if (currency == 'USD') {
-      return '\$ ${value.toStringAsFixed(2)}';
-    } else if (currency == 'EUR') {
-      return '€ ${value.toStringAsFixed(2)}';
-    } else if (currency == 'JPY') {
-      final formatted = value
-          .toStringAsFixed(0)
-          .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-      return '¥ $formatted';
-    } else if (currency == 'SGD') {
-      return 'S\$ ${value.toStringAsFixed(2)}';
-    }
-    return '${_currencyInfo[currency]?['symbol'] ?? ''} ${value.toStringAsFixed(2)}';
   }
 
   DateTime _getTimeForOffset(int offsetHours) {
@@ -121,10 +92,20 @@ class _CurrencyTimeConverterScreenState
   }
 
   String _formatDateShort(DateTime time) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     final dayName = days[time.weekday - 1];
     final monthName = months[time.month - 1];
@@ -132,7 +113,6 @@ class _CurrencyTimeConverterScreenState
   }
 
   bool _isWorkingHours(DateTime localTime, int openHour, int closeHour) {
-    // Weekend check: Saturday (6) and Sunday (7)
     if (localTime.weekday == DateTime.sunday) return false;
     return localTime.hour >= openHour && localTime.hour < closeHour;
   }
@@ -140,240 +120,47 @@ class _CurrencyTimeConverterScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final inputAmount = double.tryParse(_amountController.text) ?? 0.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Logistics Forex & World Clocks'),
+        title: const Text('Zona Waktu & Jam Suplier Global'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline_rounded),
+            tooltip: 'Informasi Jam Kerja Suplier',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Row(
+                    children: [
+                      Icon(Icons.public_rounded, color: Color(0xFF14B8A6)),
+                      SizedBox(width: 8),
+                      Text('Zona Waktu Suplier', style: TextStyle(fontSize: 18)),
+                    ],
+                  ),
+                  content: const Text(
+                    'Fitur ini membantu teknisi dan staf bengkel memantau jam operasional suplier suku cadang internasional di London, Shenzhen, Tokyo, dan New York, serta koordinasi antar cabang di WIB, WITA, dan WIT secara real-time.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Tutup'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Section 1: Currency Converter ────────────────────────────────
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.currency_exchange_rounded,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Global Spare Parts Currency Converter',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Live exchange rates for China (CNY / ¥), USA (USD), and Indonesia (IDR)',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
 
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    // Input Row
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            controller: _amountController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            onChanged: (_) => setState(() {}),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                            decoration: InputDecoration(
-                              labelText: 'Purchase Amount',
-                              prefixText: '${_currencyInfo[_sourceCurrency]?['symbol']} ',
-                              prefixStyle: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _sourceCurrency,
-                            items: _usdRates.keys.map((code) {
-                              final info = _currencyInfo[code];
-                              return DropdownMenuItem(
-                                value: code,
-                                child: Text(
-                                  '$code (${info?['symbol']})',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _sourceCurrency = val);
-                              }
-                            },
-                            decoration: InputDecoration(
-                              labelText: 'Currency',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Quick Preset Chips
-                    const SizedBox(height: 10),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildPresetChip('100', '100'),
-                          const SizedBox(width: 6),
-                          _buildPresetChip('500', '500'),
-                          const SizedBox(width: 6),
-                          _buildPresetChip('1,000', '1000'),
-                          const SizedBox(width: 6),
-                          _buildPresetChip('5,000', '5000'),
-                          const SizedBox(width: 6),
-                          _buildPresetChip('10,000', '10000'),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-
-                    // Converted Results
-                    ..._usdRates.keys.where((c) => c != _sourceCurrency).map((target) {
-                      final converted = _convert(inputAmount, target);
-                      final info = _currencyInfo[target];
-                      final isKeyCurrency = target == 'CNY' || target == 'IDR' || target == 'USD';
-
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isKeyCurrency
-                              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.25)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                          border: isKeyCurrency
-                              ? Border.all(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                                )
-                              : null,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: isKeyCurrency
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  info?['symbol'] ?? target,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: isKeyCurrency ? Colors.white : null,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '$target - ${info?['name']}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    info?['label'] ?? '',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              _formatCurrency(converted, target),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isKeyCurrency
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // ── Section 2: Supplier Logistics World Clocks ────────────────────
             Row(
               children: [
                 Container(
@@ -394,13 +181,13 @@ class _CurrencyTimeConverterScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Supplier Logistics World Clocks',
+                        'Konversi Waktu & Jam Logistik Global',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        'Monitor active manufacturing & cargo dispatch hours across China, USA & Indonesia',
+                        'Sinkronisasi waktu servis & logistik (WIB, WITA, WIT, London, Tiongkok, Jepang, AS)',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -412,60 +199,413 @@ class _CurrencyTimeConverterScreenState
             ),
             const SizedBox(height: 12),
 
-            // 1. China Hub (Shenzhen / Guangzhou / Yiwu)
-            _buildLogisticsHubCard(
-              hubName: 'China Supply & Factory Hub',
-              region: 'Shenzhen / Guangzhou / Yiwu',
-              timezoneLabel: 'China Standard Time (CST / GMT+8)',
-              time: _getTimeForOffset(8),
-              openHour: 9,
-              closeHour: 18,
-              cutoffHour: 17,
-              accentColor: const Color(0xFFE11D48), // Rose/Red for China
-              icon: Icons.factory_outlined,
-              shippingNote: 'Huaqiangbei spare parts & air freight cargo dispatch cutoff: 17:00 CST',
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: Colors.amber.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.swap_horiz_rounded,
+                          color: Colors.amber,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Kalkulator Konversi Waktu Antar-Zona',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: _interactiveSourceTime,
+                                builder: (ctx, child) {
+                                  return MediaQuery(
+                                    data: MediaQuery.of(ctx)
+                                        .copyWith(alwaysUse24HourFormat: true),
+                                    child: child ?? const SizedBox(),
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setState(() => _interactiveSourceTime = picked);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant
+                                      .withValues(alpha: 0.6),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Waktu Acuan',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: theme
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${_interactiveSourceTime.hour.toString().padLeft(2, '0')}:${_interactiveSourceTime.minute.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _interactiveSourceZone,
+                            isExpanded: true,
+                            items: _allZoneOffsets.keys.map((zone) {
+                              return DropdownMenuItem(
+                                value: zone,
+                                child: Text(
+                                  zone,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _interactiveSourceZone = val);
+                              }
+                            },
+                            decoration: InputDecoration(
+                              labelText: 'Zona Asal',
+                              labelStyle: const TextStyle(fontSize: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildTimePresetChip(
+                            '08:00 (Buka)',
+                            const TimeOfDay(hour: 8, minute: 0),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildTimePresetChip(
+                            '12:00 (Siang)',
+                            const TimeOfDay(hour: 12, minute: 0),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildTimePresetChip(
+                            '17:00 (Cut-Off)',
+                            const TimeOfDay(hour: 17, minute: 0),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildTimePresetChip(
+                            '20:00 (Tutup)',
+                            const TimeOfDay(hour: 20, minute: 0),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildTimePresetChip('Jam Sekarang', TimeOfDay.now()),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Hasil Konversi di Zona Lain:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _allZoneOffsets.keys.map((targetZone) {
+                        final isSelected = targetZone == _interactiveSourceZone;
+                        final convertedTime = _computeZoneTime(
+                          _interactiveSourceTime,
+                          _interactiveSourceZone,
+                          targetZone,
+                        );
+                        final dayNote = _computeDayNote(
+                          _interactiveSourceTime,
+                          _interactiveSourceZone,
+                          targetZone,
+                        );
+                        final isMandatory =
+                            targetZone == 'WIB' ||
+                            targetZone == 'WITA' ||
+                            targetZone == 'WIT' ||
+                            targetZone == 'London';
+
+                        return Container(
+                          width: (MediaQuery.of(context).size.width - 70) / 2,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? theme.colorScheme.primary.withValues(
+                                    alpha: 0.15,
+                                  )
+                                : isMandatory
+                                ? Colors.amber.withValues(alpha: 0.1)
+                                : theme.colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : isMandatory
+                                  ? Colors.amber.withValues(alpha: 0.4)
+                                  : theme.colorScheme.outlineVariant.withValues(
+                                      alpha: 0.4,
+                                    ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    targetZone,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : isMandatory
+                                          ? Colors.amber
+                                          : theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Text(
+                                      'ACUAN',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF14B8A6),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                convertedTime,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              Text(
+                                dayNote,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
-            // 2. USA Eastern Logistics (Memphis / New York)
-            _buildLogisticsHubCard(
-              hubName: 'USA Eastern Logistics Hub',
-              region: 'Memphis FedEx Hub / New York OEM Depots',
-              timezoneLabel: 'Eastern Standard Time (EST / UTC-5)',
-              time: _getTimeForOffset(-5),
-              openHour: 8,
-              closeHour: 17,
-              cutoffHour: 16,
-              accentColor: const Color(0xFF2563EB), // Blue for USA
-              icon: Icons.flight_takeoff_rounded,
-              shippingNote: 'FedEx SuperHub parcel intake & express sorting active until 16:30 EST',
-            ),
+            const SizedBox(height: 20),
 
-            // 3. USA Pacific Hub (Silicon Valley / LA)
-            _buildLogisticsHubCard(
-              hubName: 'USA Pacific Tech Hub',
-              region: 'California / Silicon Valley Parts Center',
-              timezoneLabel: 'Pacific Standard Time (PST / UTC-8)',
-              time: _getTimeForOffset(-8),
-              openHour: 9,
-              closeHour: 17,
-              cutoffHour: 16,
-              accentColor: const Color(0xFF0284C7), // Sky Blue
-              icon: Icons.devices_other_rounded,
-              shippingNote: 'West Coast OEM distributor order clearance & freight processing',
+            Row(
+              children: [
+                const Icon(
+                  Icons.podcasts_rounded,
+                  size: 16,
+                  color: Color(0xFF14B8A6),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Jam Digital Real-Time & Operasional Logistik',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 10),
 
-            // 4. Indonesia Domestic Hub (WIB)
             _buildLogisticsHubCard(
-              hubName: 'Indonesia Central Service Workshop',
-              region: 'Jakarta / Roxy / Surabaya Warehouses',
-              timezoneLabel: 'Western Indonesia Time (WIB / UTC+7)',
+              hubName: 'Bengkel Servis Pusat SmartFix Indonesia (WIB)',
+              region: 'Gudang Roxy Square / Mangga Dua Jakarta (WIB / UTC+7)',
+              timezoneLabel: 'Waktu Indonesia Barat (WIB / UTC+7)',
               time: _getTimeForOffset(7),
               openHour: 8,
               closeHour: 20,
               cutoffHour: 19,
-              accentColor: const Color(0xFF0F766E), // Teal
+              accentColor: const Color(0xFF0F766E),
               icon: Icons.storefront_rounded,
-              shippingNote: 'Local courier dispatch & technician counter pickup window open until 19:30 WIB',
+              shippingNote: 'Loket pengambilan teknisi & pengiriman kurir lokal buka hingga 19:30 WIB',
+            ),
+
+            _buildLogisticsHubCard(
+              hubName: 'Hub Logistik & Servis Regional Bali-Sulawesi (WITA)',
+              region: 'Denpasar Bali / Makassar Regional Service Center (WITA / UTC+8)',
+              timezoneLabel: 'Waktu Indonesia Tengah (WITA / UTC+8)',
+              time: _getTimeForOffset(8),
+              openHour: 8,
+              closeHour: 20,
+              cutoffHour: 19,
+              accentColor: const Color(0xFF0284C7),
+              icon: Icons.location_city_rounded,
+              shippingNote: 'Distribusi suku cadang regional & pengiriman cepat buka hingga 19:30 WITA',
+            ),
+
+            _buildLogisticsHubCard(
+              hubName: 'Hub Logistik & Servis Regional Maluku-Papua (WIT)',
+              region: 'Pusat Layanan Jayapura / Ambon Depo (WIT / UTC+9)',
+              timezoneLabel: 'Waktu Indonesia Timur (WIT / UTC+9)',
+              time: _getTimeForOffset(9),
+              openHour: 8,
+              closeHour: 20,
+              cutoffHour: 19,
+              accentColor: const Color(0xFF10B981),
+              icon: Icons.explore_outlined,
+              shippingNote: 'Penyortiran pengiriman kargo udara suku cadang timur aktif hingga 19:00 WIT',
+            ),
+
+            _buildLogisticsHubCard(
+              hubName: 'Pusat Suku Cadang & Lisensi Diagnostik London UK',
+              region: 'London Tech City / Heathrow Logistics Cargo Depot UK',
+              timezoneLabel:
+                  'Waktu London Inggris (${_londonOffset == 1 ? 'BST / UTC+1' : 'GMT / UTC+0'})',
+              time: _getTimeForOffset(_londonOffset),
+              openHour: 8,
+              closeHour: 17,
+              cutoffHour: 16,
+              accentColor: const Color(0xFF8B5CF6),
+              icon: Icons.language_rounded,
+              shippingNote: 'Pemrosesan pesanan kargo suku cadang Eropa & lisensi software aktif hingga 16:30 London',
+            ),
+
+            _buildLogisticsHubCard(
+              hubName: 'Pusat Pabrik & Suku Cadang Tiongkok',
+              region: 'Shenzhen / Guangzhou / Yiwu (Pasar Huaqiangbei)',
+              timezoneLabel: 'Waktu Standar Tiongkok (CST / GMT+8)',
+              time: _getTimeForOffset(8),
+              openHour: 9,
+              closeHour: 18,
+              cutoffHour: 17,
+              accentColor: const Color(0xFFE11D48),
+              icon: Icons.factory_outlined,
+              shippingNote: 'Batas pemrosesan kargo udara suku cadang Huaqiangbei: 17:00 CST',
+            ),
+
+            _buildLogisticsHubCard(
+              hubName: 'Pusat Komponen Presisi & SMD Jepang',
+              region: 'Tokyo Akihabara / Osaka Precision Hub',
+              timezoneLabel: 'Waktu Standar Jepang (JST / GMT+9)',
+              time: _getTimeForOffset(9),
+              openHour: 9,
+              closeHour: 18,
+              cutoffHour: 17,
+              accentColor: const Color(0xFFF59E0B),
+              icon: Icons.precision_manufacturing_rounded,
+              shippingNote: 'Pengiriman alat mikrosolder & IC solder SMD presisi: 17:30 JST',
+            ),
+
+            _buildLogisticsHubCard(
+              hubName: 'Pusat Logistik Pantai Timur AS',
+              region: 'Depo OEM New York & SuperHub FedEx Memphis',
+              timezoneLabel: 'Waktu Standar Timur AS (EST / UTC-5)',
+              time: _getTimeForOffset(-5),
+              openHour: 8,
+              closeHour: 17,
+              cutoffHour: 16,
+              accentColor: const Color(0xFF2563EB),
+              icon: Icons.flight_takeoff_rounded,
+              shippingNote: 'Penyortiran paket ekspres & penerimaan kargo aktif hingga 16:30 EST',
             ),
           ],
         ),
@@ -473,28 +613,68 @@ class _CurrencyTimeConverterScreenState
     );
   }
 
-  Widget _buildPresetChip(String label, String value) {
+
+  Widget _buildTimePresetChip(String label, TimeOfDay time) {
+    final isSelected =
+        _interactiveSourceTime.hour == time.hour &&
+        _interactiveSourceTime.minute == time.minute;
     return InkWell(
       onTap: () {
-        _amountController.text = value;
-        setState(() {});
+        setState(() => _interactiveSourceTime = time);
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: isSelected
+              ? Colors.amber.withValues(alpha: 0.25)
+              : Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: isSelected
+                ? Colors.amber
+                : Theme.of(context).colorScheme.outlineVariant
+                      .withValues(alpha: 0.5),
           ),
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.amber : null,
+          ),
         ),
       ),
     );
+  }
+
+  String _computeZoneTime(TimeOfDay baseTime, String fromZone, String toZone) {
+    final fromOffset = _allZoneOffsets[fromZone] ?? 7;
+    final toOffset = _allZoneOffsets[toZone] ?? 7;
+    final diffHours = toOffset - fromOffset;
+
+    int totalMinutes =
+        (baseTime.hour * 60 + baseTime.minute) + (diffHours * 60);
+    while (totalMinutes < 0) {
+      totalMinutes += 1440;
+    }
+    totalMinutes = totalMinutes % 1440;
+
+    final h = (totalMinutes ~/ 60).toString().padLeft(2, '0');
+    final m = (totalMinutes % 60).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  String _computeDayNote(TimeOfDay baseTime, String fromZone, String toZone) {
+    final fromOffset = _allZoneOffsets[fromZone] ?? 7;
+    final toOffset = _allZoneOffsets[toZone] ?? 7;
+    final diffHours = toOffset - fromOffset;
+    final totalHours = baseTime.hour + diffHours;
+    if (totalHours >= 24) return '+1 hr (Besok)';
+    if (totalHours < 0) return '-1 hr (Kemarin)';
+    return 'Hari sama';
   }
 
   Widget _buildLogisticsHubCard({
@@ -560,13 +740,18 @@ class _CurrencyTimeConverterScreenState
                     ],
                   ),
                 ),
-                // Live Digital Clock Badge
+
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: accentColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -598,12 +783,17 @@ class _CurrencyTimeConverterScreenState
             const Divider(height: 1),
             const SizedBox(height: 10),
 
-            // Status and Operating Hours Row
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                // Active/Closed badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: isOpen
                         ? Colors.green.withValues(alpha: 0.15)
@@ -623,33 +813,32 @@ class _CurrencyTimeConverterScreenState
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        isOpen ? 'Dispatch Active (Open)' : 'Off-Hours / Night Queue',
+                        isOpen
+                            ? 'Pengiriman Aktif (Buka)'
+                            : 'Di Luar Jam Kerja (Malam)',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isOpen ? Colors.green.shade800 : Colors.amber.shade800,
+                          color: isOpen
+                              ? Colors.green.shade400
+                              : Colors.amber.shade400,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Hours: ${openHour.toString().padLeft(2, '0')}:00 - ${closeHour.toString().padLeft(2, '0')}:00',
-                    textAlign: TextAlign.end,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                Text(
+                  'Jam Kerja: ${openHour.toString().padLeft(2, '0')}:00 - ${closeHour.toString().padLeft(2, '0')}:00',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
 
-            // Logistics / Shipping Note
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

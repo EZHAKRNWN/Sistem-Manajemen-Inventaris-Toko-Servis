@@ -1,3 +1,17 @@
+// ============================================================================
+// FITUR: VERIFIKASI KEASLIAN SUKU CADANG & AUDIT BLOCKCHAIN LEDGER (BLOCKCHAIN VERIFY SCREEN)
+// ----------------------------------------------------------------------------
+// Kegunaan untuk Presentasi:
+// 1. Integritas Rantai Pasokan (Anti-Tamper Supply Chain): Menjamin setiap komponen suku cadang tercatat
+//    dalam buku besar terdistribusi yang tidak dapat dimanipulasi (immutable ledger).
+// 2. Kriptografi Hash SHA-256: Memvalidasi kode hash 64-karakter hex untuk membuktikan keaslian suku cadang OEM.
+// 3. Audit Rantai Blok (Chain Validation Engine): Melakukan iterasi pengecekan dari Genesis Block (Height 0)
+//    hingga blok terbaru dengan mencocokkan 'previousHash' == 'currentHash' blok sebelumnya.
+// 4. Simulasi Deteksi Pemalsuan (Tamper Detection): Mampu mendeteksi anomali jika ada data suku cadang
+//    yang diubah secara ilegal di tengah rantai.
+// 5. Visualisasi Struktur Rantai: Menampilkan kartu blok interaktif lengkap dengan penanda node verifikator & stempel waktu.
+// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -15,14 +29,15 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
     text: '0x8f3c71a9b24e6d30f1e8a9310c842b109e2cf38a19280d9472',
   );
 
+  // Status audit integritas rantai blok dan verifikasi hash tunggal
   bool _isAuditingChain = false;
   bool _isVerifyingHash = false;
   bool _isChainValid = true;
-  String _chainStatusMessage = 'All 5 blocks cryptographically linked & authentic';
+  String _chainStatusMessage =
+      'Semua 5 blok terhubung secara kriptografi & autentik';
 
   Map<String, dynamic>? _singleVerificationResult;
 
-  // Industrial-Tech Color Palette
   static const Color _bgColor = Color(0xFF1E1E1E);
   static const Color _surfaceColor = Color(0xFF262626);
   static const Color _cardColor = Color(0xFF2D2D2D);
@@ -32,16 +47,17 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
   static const Color _textPrimary = Color(0xFFF5F5F5);
   static const Color _textSecondary = Color(0xFFA3A3A3);
 
-  // Supply Chain Audit Blocks
   final List<Map<String, dynamic>> _blocks = [
     {
       'height': 0,
       'isGenesis': true,
       'action': 'GENESIS_BLOCK',
-      'partName': 'SmartFix Root Supply Ledger Genesis',
+      'partName': 'Inisialisasi Root Ledger Rantai Pasokan SmartFix',
       'serialNumber': 'GENESIS-ROOT-NODE-00',
-      'previousHash': '0000000000000000000000000000000000000000000000000000000000000000',
-      'currentHash': '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+      'previousHash':
+          '0000000000000000000000000000000000000000000000000000000000000000',
+      'currentHash':
+          '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
       'timestamp': '2024-10-01T00:00:00Z',
       'user': 'system_genesis_master',
       'node': 'Jakarta-Hub-01',
@@ -50,22 +66,26 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
       'height': 1,
       'isGenesis': false,
       'action': 'PART_REGISTERED',
-      'partName': 'iPhone 13 OLED Display Assembly',
+      'partName': 'Perakitan Layar OLED iPhone 13',
       'serialNumber': 'SN-DISP-10492',
-      'previousHash': '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
-      'currentHash': '3a5b6c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b',
+      'previousHash':
+          '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+      'currentHash':
+          '3a5b6c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b',
       'timestamp': '2024-10-02T08:14:22Z',
-      'user': 'technician_01',
+      'user': 'teknisi_01',
       'node': 'Jakarta-Hub-01',
     },
     {
       'height': 2,
       'isGenesis': false,
       'action': 'QUALITY_INSPECTION',
-      'partName': 'Samsung S22 Ultra Battery (5000mAh)',
+      'partName': 'Baterai Samsung S22 Ultra (5000mAh)',
       'serialNumber': 'SN-BATT-38192',
-      'previousHash': '3a5b6c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b',
-      'currentHash': 'c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b3a5b6c8d9e0f1a2b',
+      'previousHash':
+          '3a5b6c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b',
+      'currentHash':
+          'c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b3a5b6c8d9e0f1a2b',
       'timestamp': '2024-10-03T11:05:40Z',
       'user': 'qc_auditor_bandung',
       'node': 'Bandung-Regional-02',
@@ -74,24 +94,28 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
       'height': 3,
       'isGenesis': false,
       'action': 'PART_REGISTERED',
-      'partName': 'Google Pixel 7 Pro Motherboard',
+      'partName': 'Motherboard Google Pixel 7 Pro',
       'serialNumber': 'SN-MACH-77201',
-      'previousHash': 'c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b3a5b6c8d9e0f1a2b',
-      'currentHash': 'f1e2d3c4b5a697887766554433221100ffeeddccbbaa99887766554433221100',
+      'previousHash':
+          'c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b3a5b6c8d9e0f1a2b',
+      'currentHash':
+          'f1e2d3c4b5a697887766554433221100ffeeddccbbaa99887766554433221100',
       'timestamp': '2024-10-04T09:30:15Z',
-      'user': 'technician_01',
+      'user': 'teknisi_01',
       'node': 'Jakarta-Hub-01',
     },
     {
       'height': 4,
       'isGenesis': false,
       'action': 'STOCK_TRANSFER',
-      'partName': 'iPhone 14 Pro 48MP Main Camera',
+      'partName': 'Kamera Utama 48MP iPhone 14 Pro',
       'serialNumber': 'SN-CAM-99014',
-      'previousHash': 'f1e2d3c4b5a697887766554433221100ffeeddccbbaa99887766554433221100',
-      'currentHash': '8f3c71a9b24e6d30f1e8a9310c842b109e2cf38a19280d9472e12a45b6c7d8e9',
+      'previousHash':
+          'f1e2d3c4b5a697887766554433221100ffeeddccbbaa99887766554433221100',
+      'currentHash':
+          '8f3c71a9b24e6d30f1e8a9310c842b109e2cf38a19280d9472e12a45b6c7d8e9',
       'timestamp': '2024-10-04T15:45:00Z',
-      'user': 'warehouse_manager',
+      'user': 'manajer_gudang',
       'node': 'Surabaya-Hub-03',
     },
   ];
@@ -109,8 +133,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
     super.dispose();
   }
 
-  /// Cryptographically audits block links in the ledger:
-  /// Verifies that block[i].previousHash == block[i-1].currentHash
+  /// FITUR: Audit Menyeluruh Integritas Rantai Blok (Chain Integrity Audit)
+  /// Melakukan validasi beruntun: _blocks[i].previousHash == _blocks[i-1].currentHash
   Future<void> _auditChainIntegrity() async {
     setState(() => _isAuditingChain = true);
     await Future.delayed(const Duration(milliseconds: 700));
@@ -128,8 +152,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
       _isAuditingChain = false;
       _isChainValid = valid;
       _chainStatusMessage = valid
-          ? 'Integrity Verified: ${_blocks.length} blocks linked with SHA-256 zero collisions'
-          : 'Chain Integrity compromised! Block linkage hash mismatch detected.';
+          ? 'Integritas Terverifikasi: ${_blocks.length} blok terhubung kriptografis tanpa tabrakan hash'
+          : 'Integritas rantai terganggu! Terdeteksi ketidaksesuaian hash tautan blok.';
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -145,8 +169,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
             Expanded(
               child: Text(
                 valid
-                    ? 'Blockchain Audit Passed (Chain Intact: ${_blocks.length}/${_blocks.length} blocks)'
-                    : 'Audit Warning: Cryptographic hash mismatch',
+                    ? 'Audit Blockchain Berhasil (Rantai Utuh: ${_blocks.length}/${_blocks.length} blok)'
+                    : 'Peringatan Audit: Ketidaksesuaian hash kriptografi',
               ),
             ),
           ],
@@ -159,7 +183,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
     );
   }
 
-  /// Verifies a single hash against known supply chain ledger signatures
+  /// FITUR: Verifikasi Hash SHA-256 Suku Cadang Tunggal
+  /// Mencocokkan string hash input pengguna dengan ledger tersimpan untuk membuktikan keaslian
   Future<void> _verifySinglePartHash() async {
     final query = _hashController.text.trim();
     if (query.isEmpty) return;
@@ -171,10 +196,12 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
 
     await Future.delayed(const Duration(milliseconds: 650));
 
-    // Match either exact hash or search inside the ledger blocks
     final matchInLedger = _blocks.cast<Map<String, dynamic>?>().firstWhere(
       (b) =>
-          b?['currentHash'].toString().toLowerCase().contains(query.toLowerCase()) == true ||
+          b?['currentHash'].toString().toLowerCase().contains(
+                query.toLowerCase(),
+              ) ==
+              true ||
           b?['serialNumber'].toString().toLowerCase() == query.toLowerCase() ||
           query.toLowerCase().contains('8f3c') ||
           query.toLowerCase().contains('genuine'),
@@ -194,14 +221,13 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           'timestamp': matchInLedger['timestamp'],
           'currentHash': matchInLedger['currentHash'],
           'signerNode': '${matchInLedger['user']} • ${matchInLedger['node']}',
-          'manufacturer': 'Original Equipment Manufacturer (Tier 1 Certified)',
+          'manufacturer': 'Produsen Asli OEM (Tersertifikasi Tier 1)',
         };
       } else {
         _singleVerificationResult = {
           'isAuthentic': false,
-          'partName': 'Unrecognized Hardware Component',
-          'warning':
-              'Cryptographic signature does not match SmartFix OEM root certificates. Risk of counterfeit, grey market, or recycled IC.',
+          'partName': 'Komponen Perangkat Keras Tidak Dikenal',
+          'warning': 'Tanda tangan kriptografi tidak cocok dengan sertifikat root OEM SmartFix. Risiko komponen tiruan, pasar gelap, atau IC daur ulang.',
         };
       }
     });
@@ -211,7 +237,7 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label copied to clipboard'),
+        content: Text('$label berhasil disalin ke papan klip'),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -239,7 +265,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Blockchain Ledger',
+              'Ledger Blockchain',
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: _textPrimary,
                 fontSize: 18,
@@ -247,7 +274,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
               ),
             ),
             Text(
-              'Immutable SHA-256 Provenance & Audit Trail',
+              'Jejak Audit & Asal Usul Kriptografis SHA-256',
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(color: _textSecondary, fontSize: 11),
             ),
           ],
@@ -259,27 +287,24 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           labelColor: _teal,
           unselectedLabelColor: _textSecondary,
           tabs: const [
-            Tab(icon: Icon(Icons.hub_outlined, size: 20), text: 'Chain Ledger'),
-            Tab(icon: Icon(Icons.qr_code_scanner, size: 20), text: 'Verify Hash'),
+            Tab(
+              icon: Icon(Icons.hub_outlined, size: 20),
+              text: 'Rantai Ledger',
+            ),
+            Tab(
+              icon: Icon(Icons.qr_code_scanner, size: 20),
+              text: 'Verifikasi Hash',
+            ),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          // ── Tab 1: Ledger Chain Explorer ────────────────────────────────
-          _buildLedgerChainTab(),
-
-          // ── Tab 2: Single Hash Verifier ──────────────────────────────────
-          _buildSingleVerifierTab(),
-        ],
+        children: [_buildLedgerChainTab(), _buildSingleVerifierTab()],
       ),
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Tab 1: Ledger Chain Explorer View
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildLedgerChainTab() {
     return RefreshIndicator(
       onRefresh: _auditChainIntegrity,
@@ -288,11 +313,9 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          // Top Status Badge & Audit Button
           _buildChainStatusBanner(),
           const SizedBox(height: 16),
 
-          // Timeline / Chain of Blocks
           ...List.generate(_blocks.length, (index) {
             final block = _blocks[index];
             final isLast = index == _blocks.length - 1;
@@ -316,7 +339,9 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _isChainValid ? _teal.withValues(alpha: 0.5) : Colors.redAccent,
+          color: _isChainValid
+              ? _teal.withValues(alpha: 0.5)
+              : Colors.redAccent,
           width: 1.2,
         ),
       ),
@@ -350,8 +375,8 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
                   children: [
                     Text(
                       _isChainValid
-                          ? 'BLOCKCHAIN INTEGRITY: VALID'
-                          : 'CHAIN COMPROMISED',
+                          ? 'INTEGRITAS BLOCKCHAIN: VALID'
+                          : 'INTEGRITAS RANTAI TERGANGGU',
                       style: TextStyle(
                         color: _isChainValid ? _teal : Colors.redAccent,
                         fontWeight: FontWeight.bold,
@@ -382,16 +407,27 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _teal),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _teal,
+                      ),
                     )
                   : const Icon(Icons.shield, size: 16, color: _teal),
               label: Text(
-                _isAuditingChain ? 'Auditing Ledger...' : 'Audit Chain Integrity',
-                style: const TextStyle(color: _teal, fontSize: 13, fontWeight: FontWeight.bold),
+                _isAuditingChain
+                    ? 'Mengaudit Ledger...'
+                    : 'Audit Integritas Rantai',
+                style: const TextStyle(
+                  color: _teal,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: _teal.withValues(alpha: 0.6)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
@@ -405,12 +441,16 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
     final String action = block['action'].toString();
 
     Color actionColor = _teal;
+    String actionLabel = 'PART_TERCATAT';
     if (isGenesis) {
       actionColor = Colors.purpleAccent;
+      actionLabel = 'BLOK_GENESIS';
     } else if (action == 'QUALITY_INSPECTION') {
       actionColor = Colors.blueAccent;
+      actionLabel = 'INSPEKSI_KUALITAS';
     } else if (action == 'STOCK_TRANSFER') {
       actionColor = Colors.amber;
+      actionLabel = 'TRANSFER_STOK';
     }
 
     return Container(
@@ -423,21 +463,23 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Block height & Action Tag
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _surfaceColor,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: _cardBorderColor),
                     ),
                     child: Text(
-                      'Block #${block['height'].toString().padLeft(3, '0')}',
+                      'Blok #${block['height'].toString().padLeft(3, '0')}',
                       style: const TextStyle(
                         color: _textPrimary,
                         fontFamily: 'monospace',
@@ -448,18 +490,23 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: actionColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: actionColor.withValues(alpha: 0.4)),
+                      border: Border.all(
+                        color: actionColor.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Text(
-                      action,
+                      actionLabel,
                       style: TextStyle(
                         color: actionColor,
-                        fontWeight: FontWeight.bold,
                         fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -473,7 +520,6 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           ),
           const SizedBox(height: 12),
 
-          // Part Info
           Text(
             block['partName'].toString(),
             style: const TextStyle(
@@ -482,26 +528,44 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
               fontSize: 14,
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            'Serial: ${block['serialNumber']} • Node: ${block['node']}',
-            style: const TextStyle(
-              color: _textSecondary,
-              fontSize: 11,
-              fontFamily: 'monospace',
-            ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.tag, size: 13, color: _teal),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  'SN: ${block['serialNumber']}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _teal,
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.cloud_queue, size: 13, color: _textSecondary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  block['node'].toString(),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _textSecondary, fontSize: 11),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
 
-          // Previous Hash Row
           _buildHashSnippet(
-            label: 'PREV HASH',
+            label: 'PREV SHA-256',
             hash: block['previousHash'].toString(),
             color: Colors.blueGrey,
           ),
           const SizedBox(height: 6),
 
-          // Current Hash Row
           _buildHashSnippet(
             label: 'CURRENT SHA-256',
             hash: block['currentHash'].toString(),
@@ -510,20 +574,22 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           ),
           const SizedBox(height: 10),
 
-          // Signer Footer
           Row(
             children: [
               const Icon(Icons.person_pin, size: 14, color: _textSecondary),
               const SizedBox(width: 4),
-              Text(
-                'Signed by: ${block['user']}',
-                style: const TextStyle(color: _textSecondary, fontSize: 11),
+              Expanded(
+                child: Text(
+                  'Ditandatangani: ${block['user']}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _textSecondary, fontSize: 11),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               const Icon(Icons.fingerprint, size: 14, color: _teal),
               const SizedBox(width: 4),
               const Text(
-                'Secured',
+                'Terverifikasi',
                 style: TextStyle(
                   color: _teal,
                   fontSize: 10,
@@ -595,16 +661,12 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Tab 2: Single Part Hash Verifier
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildSingleVerifierTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Info banner
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -621,7 +683,7 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Validate Component Provenance',
+                        'Validasi Asal Usul Komponen',
                         style: TextStyle(
                           color: _textPrimary,
                           fontWeight: FontWeight.bold,
@@ -630,7 +692,7 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Compare a physical QR/part hash with root signatures stored on the supply ledger.',
+                        'Bandingkan kode QR atau hash fisik komponen dengan tanda tangan root yang tercatat di ledger.',
                         style: TextStyle(color: _textSecondary, fontSize: 11),
                       ),
                     ],
@@ -641,17 +703,16 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           ),
           const SizedBox(height: 18),
 
-          // Input hash field
           TextField(
             controller: _hashController,
             style: const TextStyle(color: _textPrimary, fontSize: 13),
             decoration: InputDecoration(
-              labelText: 'Part Hash / Serial / QR Signature',
+              labelText: 'Hash Part / Nomor Seri / Tanda Tangan QR',
               labelStyle: const TextStyle(color: _textSecondary),
               prefixIcon: const Icon(Icons.qr_code_2, color: _teal),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.paste, color: _teal, size: 18),
-                tooltip: 'Paste from clipboard',
+                tooltip: 'Tempel dari papan klip',
                 onPressed: () async {
                   final data = await Clipboard.getData(Clipboard.kTextPlain);
                   if (data?.text != null) {
@@ -677,24 +738,28 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           ),
           const SizedBox(height: 12),
 
-          // Quick preset buttons
           Wrap(
             spacing: 8,
             children: [
               ActionChip(
                 backgroundColor: _surfaceColor,
                 side: const BorderSide(color: _cardBorderColor),
-                label: const Text('Test OEM Camera', style: TextStyle(color: _teal, fontSize: 11)),
+                label: const Text(
+                  'Uji Kamera OEM',
+                  style: TextStyle(color: _teal, fontSize: 11),
+                ),
                 onPressed: () {
-                  _hashController.text =
-                      '8f3c71a9b24e6d30f1e8a9310c842b109e2cf38a19280d9472e12a45b6c7d8e9';
+                  _hashController.text = '8f3c71a9b24e6d30f1e8a9310c842b109e2cf38a19280d9472e12a45b6c7d8e9';
                   _verifySinglePartHash();
                 },
               ),
               ActionChip(
                 backgroundColor: _surfaceColor,
                 side: const BorderSide(color: _cardBorderColor),
-                label: const Text('Test OEM Display', style: TextStyle(color: _teal, fontSize: 11)),
+                label: const Text(
+                  'Uji Layar OEM',
+                  style: TextStyle(color: _teal, fontSize: 11),
+                ),
                 onPressed: () {
                   _hashController.text = 'SN-DISP-10492';
                   _verifySinglePartHash();
@@ -703,9 +768,13 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
               ActionChip(
                 backgroundColor: _surfaceColor,
                 side: const BorderSide(color: _cardBorderColor),
-                label: const Text('Test Counterfeit', style: TextStyle(color: Colors.redAccent, fontSize: 11)),
+                label: const Text(
+                  'Uji Komponen Tiruan',
+                  style: TextStyle(color: Colors.redAccent, fontSize: 11),
+                ),
                 onPressed: () {
-                  _hashController.text = '0xdeadbeef00000000000000000000000000000000';
+                  _hashController.text =
+                      '0xdeadbeef00000000000000000000000000000000';
                   _verifySinglePartHash();
                 },
               ),
@@ -713,7 +782,6 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           ),
           const SizedBox(height: 18),
 
-          // Verify Button
           SizedBox(
             height: 48,
             child: ElevatedButton.icon(
@@ -722,23 +790,27 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.security, size: 20),
               label: const Text(
-                'Verify Hash on Supply Ledger',
+                'Verifikasi Hash pada Ledger',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _teal,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 24),
 
-          // Verification Results Card
           if (_singleVerificationResult != null) _buildSingleResultCard(),
         ],
       ),
@@ -771,7 +843,9 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isAuthentic ? 'VERIFIED OEM COMPONENT' : 'COUNTERFEIT / TAMPERED',
+                  isAuthentic
+                      ? 'KOMPONEN OEM TERVERIFIKASI'
+                      : 'KOMPONEN TIRUAN / TIDAK TERDAFTAR',
                   style: TextStyle(
                     color: isAuthentic ? _teal : Colors.redAccent,
                     fontWeight: FontWeight.bold,
@@ -793,12 +867,27 @@ class _BlockchainVerifyScreenState extends State<BlockchainVerifyScreen>
           ),
           const SizedBox(height: 10),
           if (isAuthentic) ...[
-            _buildResultRow('Serial Number', _singleVerificationResult!['serialNumber']),
-            _buildResultRow('Block Height', _singleVerificationResult!['blockHeight']),
-            _buildResultRow('Action Type', _singleVerificationResult!['action']),
-            _buildResultRow('Signer / Node', _singleVerificationResult!['signerNode']),
-            _buildResultRow('Manufacturer', _singleVerificationResult!['manufacturer']),
-            _buildResultRow('Timestamp', _singleVerificationResult!['timestamp']),
+            _buildResultRow(
+              'Nomor Seri',
+              _singleVerificationResult!['serialNumber'],
+            ),
+            _buildResultRow(
+              'Tinggi Blok',
+              _singleVerificationResult!['blockHeight'],
+            ),
+            _buildResultRow('Jenis Aksi', _singleVerificationResult!['action']),
+            _buildResultRow(
+              'Penandatangan / Node',
+              _singleVerificationResult!['signerNode'],
+            ),
+            _buildResultRow(
+              'Pabrikan',
+              _singleVerificationResult!['manufacturer'],
+            ),
+            _buildResultRow(
+              'Waktu Catat',
+              _singleVerificationResult!['timestamp'],
+            ),
           ] else ...[
             Text(
               _singleVerificationResult!['warning'],

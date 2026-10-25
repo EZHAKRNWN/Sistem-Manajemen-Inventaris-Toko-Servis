@@ -1,7 +1,21 @@
+// ============================================================================
+// FITUR: DASBOR UTAMA MANAJEMEN INVENTARIS SUKU CADANG (DASHBOARD SCREEN)
+// ----------------------------------------------------------------------------
+// Kegunaan untuk Presentasi:
+// 1. Menampilkan ringkasan katalog suku cadang servis secara real-time dari backend Laravel.
+// 2. Dilengkapi kartu KPI (Total Parts, Low Stock, Out of Stock) untuk monitoring stok kritis.
+// 3. Fitur Pencarian Cerdas dengan Debounce (350ms) guna mencegah request berlebihan ke server.
+// 4. Filter Kategori interaktif (Layar, Baterai, Mesin, Aksesoris) menggunakan ChoiceChip.
+// 5. Integrasi autentikasi Sanctum: menampilkan nama teknisi yang sedang login dan opsi logout aman.
+// 6. Menyajikan status verifikasi integritas buku besar SHA-256 pada masing-masing komponen.
+// ============================================================================
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:smartfix_mobile/core/api_service.dart';
 import 'package:smartfix_mobile/core/auth_helper.dart';
+import 'package:smartfix_mobile/core/local_db_helper.dart';
 import 'package:smartfix_mobile/features/auth/screens/login_screen.dart';
 import 'package:smartfix_mobile/features/inventory/screens/add_part_screen.dart';
 
@@ -13,16 +27,27 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // Controller untuk input pencarian teks suku cadang
   final TextEditingController _searchController = TextEditingController();
+  // Service komunikasi data REST API Laravel
   final ApiService _apiService = ApiService();
+  // Helper manajemen sesi login & Secure Storage token
   final AuthHelper _authHelper = AuthHelper();
+  // Helper database SQLite lokal untuk Offline-First storage
+  final LocalDbHelper _localDb = LocalDbHelper();
 
+  // Kategori filter terpilih (default: 'Semua')
   String _selectedCategory = 'Semua';
+  // Nama teknisi yang sedang aktif dalam sesi
   String _technicianName = 'Teknisi';
+  // Status pemuatan data inventaris
   bool _isLoading = true;
+  // Pesan error jika koneksi atau fetch data gagal
   String? _errorMessage;
 
+  // Daftar data inventaris suku cadang dari backend
   List<Map<String, dynamic>> _inventoryItems = [];
+  // Timer debounce untuk penundaan request saat pengguna mengetik pencarian
   Timer? _debounceTimer;
 
   final List<String> _categories = [
@@ -33,7 +58,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'Aksesoris',
   ];
 
-  // Industrial-Tech Color Palette
   static const Color _bgColor = Color(0xFF1E1E1E);
   static const Color _surfaceColor = Color(0xFF262626);
   static const Color _cardColor = Color(0xFF2E2E2E);
@@ -46,7 +70,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // 1. Memuat nama profil teknisi yang tersimpan di storage lokal
     _loadTechnicianProfile();
+    // 2. Mengambil data suku cadang dari API backend Laravel
     _fetchInventory();
   }
 
@@ -57,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
+  /// FITUR: Membaca identitas teknisi dari Secure Storage
   Future<void> _loadTechnicianProfile() async {
     final name = await _authHelper.getUsername();
     if (mounted) {
@@ -66,7 +93,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  /// Handles real-time search with 350ms debounce
+  /// FITUR: Pencarian dengan Mekanisme Debounce 350 milidetik
+  /// Mencegah flooding HTTP request ke server pada saat pengguna mengetik cepat
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 350), () {
@@ -74,7 +102,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  /// Fetches inventory data from backend API with current search & category filters
+  /// FITUR: Sinkronisasi Data Inventaris dengan Pendekatan Offline-First
+  /// a. Coba panggil _apiService.getInventory()
+  /// b. Jika berhasil, clear data lama di SQLite dan insert batch data terbaru tersebut ke SQLite
+  /// c. Bungkus proses A dan B dalam try-catch dan abaikan error jaringan jika gagal (mode offline)
+  /// d. SELALU jalankan fungsi baca data ke UI dari SQLite menggunakan localDb.getInventoryItems()
+  ///    dengan parameter search dan category yang aktif (tidak pernah merender UI langsung dari API response)
   Future<void> _fetchInventory() async {
     setState(() {
       _isLoading = true;
@@ -82,10 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     try {
-      final response = await _apiService.getInventory(
-        search: _searchController.text.trim(),
-        category: _selectedCategory == 'All' ? null : _selectedCategory,
-      );
+      final response = await _apiService.getInventory();
 
       List<Map<String, dynamic>> items = [];
 
@@ -99,9 +129,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .toList();
       }
 
+      await _localDb.clearInventory();
+      if (items.isNotEmpty) {
+        await _localDb.insertInventoryBatch(items);
+      }
+    } catch (_) {
+      // Abaikan error jaringan saat offline agar aplikasi tidak crash
+    }
+
+    try {
+      final localItems = await _localDb.getInventoryItems(
+        search: _searchController.text.trim(),
+        category: _selectedCategory,
+      );
+
       if (mounted) {
         setState(() {
-          _inventoryItems = items;
+          _inventoryItems = localItems;
           _isLoading = false;
         });
       }
@@ -115,7 +159,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  /// Secure Logout flow: clears session token & SharedPreferences, routes back to Login
+  /// FITUR: Logout Aman & Dialog Konfirmasi
+  /// Menghapus bearer token Sanctum di FlutterSecureStorage dan kembali ke halaman Login
   Future<void> _handleLogout() async {
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -132,7 +177,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(width: 8),
               Text(
                 'Konfirmasi Keluar',
-                style: TextStyle(color: _textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -143,16 +192,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(false),
-              child: const Text('Batal', style: TextStyle(color: _textSecondary)),
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: _textSecondary),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogCtx).pop(true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent.shade700,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Keluar',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -170,14 +227,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  /// Formats price in IDR standard formatting
   String _formatIdr(num price) {
     final intVal = price.toInt();
     final formatted = intVal.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        );
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
     return 'Rp $formatted';
+  }
+
+  static int _parseInt(dynamic val, [int fallback = 0]) {
+    if (val == null) return fallback;
+    if (val is int) return val;
+    if (val is num) return val.toInt();
+    if (val is String) {
+      return int.tryParse(val) ?? double.tryParse(val)?.toInt() ?? fallback;
+    }
+    return fallback;
+  }
+
+  static num _parseNum(dynamic val, [num fallback = 0]) {
+    if (val == null) return fallback;
+    if (val is num) return val;
+    if (val is String) {
+      return num.tryParse(val) ?? fallback;
+    }
+    return fallback;
   }
 
   IconData _getCategoryIcon(String category) {
@@ -201,27 +276,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Inventory KPI calculations
     final totalParts = _inventoryItems.length;
     final lowStockCount = _inventoryItems.where((item) {
-      final stock = (item['stock_quantity'] ?? item['stock'] ?? 0) as int;
+      final stock = _parseInt(item['stock_quantity'] ?? item['stock']);
       return stock > 0 && stock <= 3;
     }).length;
     final outOfStockCount = _inventoryItems.where((item) {
-      final stock = (item['stock_quantity'] ?? item['stock'] ?? 0) as int;
+      final stock = _parseInt(item['stock_quantity'] ?? item['stock']);
       return stock == 0;
     }).length;
 
     return Scaffold(
       backgroundColor: _bgColor,
-      // ─── Top Navigation App Bar ──────────────────────────────────────────
+
       appBar: AppBar(
         backgroundColor: _surfaceColor,
         elevation: 0,
         centerTitle: false,
         title: Row(
           children: [
-            // Technician Initials Avatar
             Container(
               width: 38,
               height: 38,
@@ -232,11 +305,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   end: Alignment.bottomRight,
                 ),
                 shape: BoxShape.circle,
-                border: Border.all(color: _teal.withValues(alpha: 0.5), width: 1.5),
+                border: Border.all(
+                  color: _teal.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
               ),
               child: Center(
                 child: Text(
-                  _technicianName.isNotEmpty ? _technicianName[0].toUpperCase() : 'T',
+                  _technicianName.isNotEmpty
+                      ? _technicianName[0].toUpperCase()
+                      : 'T',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -281,13 +359,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
-          // Refresh Button
           IconButton(
             tooltip: 'Refresh Inventory',
             icon: const Icon(Icons.refresh_rounded, color: _textSecondary),
             onPressed: _fetchInventory,
           ),
-          // Secure Logout Action Button
+
           IconButton(
             tooltip: 'Secure Logout',
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
@@ -297,7 +374,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
 
-      // ─── Floating Action Button ──────────────────────────────────────────
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.of(context).push<bool>(
@@ -317,14 +393,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
 
-      // ─── Body Content ────────────────────────────────────────────────────
       body: RefreshIndicator(
         onRefresh: _fetchInventory,
         color: _teal,
         backgroundColor: _surfaceColor,
         child: Column(
           children: [
-            // ─── Search Bar ───────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
@@ -333,11 +407,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(color: _textPrimary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Cari suku cadang berdasarkan nama atau seri...',
-                  hintStyle: TextStyle(color: _textSecondary.withValues(alpha: 0.6)),
+                  hintStyle: TextStyle(
+                    color: _textSecondary.withValues(alpha: 0.6),
+                  ),
                   prefixIcon: const Icon(Icons.search, color: _teal, size: 22),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: _textSecondary, size: 18),
+                          icon: const Icon(
+                            Icons.clear,
+                            color: _textSecondary,
+                            size: 18,
+                          ),
                           onPressed: () {
                             _searchController.clear();
                             _fetchInventory();
@@ -346,7 +426,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : null,
                   filled: true,
                   fillColor: _surfaceColor,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -363,7 +446,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // ─── Horizontal Filter Category Chips ────────────────────────
             SizedBox(
               height: 44,
               child: ListView.separated(
@@ -390,7 +472,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     backgroundColor: _surfaceColor,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : _textSecondary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       fontSize: 12,
                     ),
                     side: BorderSide(
@@ -405,7 +489,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 8),
 
-            // ─── KPI Metrics Row ─────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
@@ -436,10 +519,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const Divider(color: _cardBorderColor, height: 16),
 
-            // ─── Inventory List / State Handling ─────────────────────────
-            Expanded(
-              child: _buildInventoryListContent(),
-            ),
+            Expanded(child: _buildInventoryListContent()),
           ],
         ),
       ),
@@ -464,35 +544,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (_errorMessage != null) {
+      final isUnauthenticated =
+          _errorMessage!.toLowerCase().contains('unauthenticated') ||
+          _errorMessage!.toLowerCase().contains('401');
+
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.cloud_off_rounded, size: 54, color: Colors.redAccent),
+              Icon(
+                isUnauthenticated
+                    ? Icons.lock_outline_rounded
+                    : Icons.cloud_off_rounded,
+                size: 54,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 12),
-              const Text(
-                'Gagal Menghubungkan ke API SmartFix',
-                style: TextStyle(color: _textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+              Text(
+                isUnauthenticated
+                    ? 'Sesi Login Telah Berakhir'
+                    : 'Gagal Menghubungkan ke API SmartFix',
+                style: const TextStyle(
+                  color: _textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                _errorMessage!,
+                isUnauthenticated
+                    ? 'Kredensial atau token sesi Anda telah berakhir. Silakan masuk kembali ke akun teknisi Anda.'
+                    : _errorMessage!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: _textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 18),
-              ElevatedButton.icon(
-                onPressed: _fetchInventory,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Coba Lagi'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _teal,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              if (isUnauthenticated)
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await _authHelper.clearSession();
+                    if (!mounted) return;
+                    Navigator.of(
+                      context,
+                      rootNavigator: true,
+                    ).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  },
+                  icon: const Icon(Icons.login_rounded, size: 18),
+                  label: const Text('Masuk ke Akun'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: _fetchInventory,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Coba Lagi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -504,11 +628,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_outlined, size: 56, color: _textSecondary.withValues(alpha: 0.5)),
+            Icon(
+              Icons.inventory_outlined,
+              size: 56,
+              color: _textSecondary.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 12),
             const Text(
               'Suku cadang tidak ditemukan',
-              style: TextStyle(color: _textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -532,15 +664,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  /// Responsive card-based item representation
   Widget _buildPartCard(Map<String, dynamic> item) {
     final String name = (item['name'] ?? 'Unnamed Component').toString();
-    final String serialNumber = (item['serial_number'] ?? item['sku'] ?? 'N/A').toString();
+    final String serialNumber = (item['serial_number'] ?? item['sku'] ?? 'N/A')
+        .toString();
     final String category = (item['category'] ?? 'General').toString();
-    final int stock = (item['stock_quantity'] ?? item['stock'] ?? 0) as int;
-    final num price = (item['base_price_idr'] ?? item['price'] ?? 0) as num;
+    final int stock = _parseInt(item['stock_quantity'] ?? item['stock']);
+    final num price = _parseNum(item['base_price_idr'] ?? item['price']);
 
-    // Stock Badge logic
     Color stockBadgeBg;
     Color stockBadgeText;
     String stockLabel;
@@ -575,7 +706,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Category Icon Capsule
                 Container(
                   width: 44,
                   height: 44,
@@ -592,7 +722,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(width: 12),
 
-                // Name & Serial
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,7 +737,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          const Icon(Icons.qr_code_2, size: 13, color: _textSecondary),
+                          const Icon(
+                            Icons.qr_code_2,
+                            size: 13,
+                            color: _textSecondary,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -628,13 +761,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
 
-                // Stock Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: stockBadgeBg,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: stockBadgeText.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: stockBadgeText.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Text(
                     stockLabel,
@@ -649,11 +786,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Price & Blockchain Verification Footer Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Price in IDR
                 Text(
                   _formatIdr(price),
                   style: const TextStyle(
@@ -663,9 +798,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
 
-                // Subtle Cryptographic Blockchain Verification Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _tealDark.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
@@ -724,10 +861,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 10,
-                color: _textSecondary,
-              ),
+              style: const TextStyle(fontSize: 10, color: _textSecondary),
             ),
           ],
         ),

@@ -1,28 +1,49 @@
+// ============================================================================
+// FITUR: LBS PELACAKAN LOKASI GUDANG & NAVIGASI RUTE (MAP TRACKING SCREEN)
+// ----------------------------------------------------------------------------
+// Kegunaan untuk Presentasi:
+// 1. Location-Based Service (LBS): Mendeteksi titik koordinat GPS real-time teknisi menggunakan 'geolocator'.
+// 2. Integrasi Peta Digital: Menampilkan peta interaktif OpenStreetMap (OSM) via 'flutter_map' tanpa biaya API berbayar.
+// 3. Jaringan Titik Distribusi DIY: 6 titik gudang suku cadang tersebar di Sleman, Kota Yogya, Bantul, dan Gunungkidul.
+// 4. Kalkulasi Rute Jalan Raya (OSRM Engine): Menghitung jarak jalan (km), estimasi waktu tempuh (ETA),
+//    serta menggambar Polyline rute navigasi jalan raya yang akurat.
+// 5. Eksternal Navigasi: Integrasi peluncuran rute langsung ke aplikasi Google Maps bawaan HP (url_launcher).
+// ============================================================================
+
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class SupplierLocation {
+/// MODEL DATA: Merepresentasikan entitas titik lokasi fisik gudang/depo suku cadang
+class WarehouseLocation {
   final String id;
   final String name;
   final String category;
   final String address;
-  final String city;
+  final String district;
   final LatLng coordinate;
   final String phone;
-  final String stockStatus;
+  final String hours;
+  final String stockInfo;
+  final IconData icon;
 
-  const SupplierLocation({
+  const WarehouseLocation({
     required this.id,
     required this.name,
     required this.category,
     required this.address,
-    required this.city,
+    required this.district,
     required this.coordinate,
     required this.phone,
-    required this.stockStatus,
+    required this.hours,
+    required this.stockInfo,
+    this.icon = Icons.warehouse_rounded,
   });
 }
 
@@ -37,90 +58,103 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
 
-  // Jakarta Pusat SmartFix central service hub
-  LatLng _currentPosition = const LatLng(-6.175392, 106.827153);
-  LatLng? _selectedDestination = const LatLng(-6.166250, 106.797820);
-  String _destinationName = 'Roxy Square Spare Parts Mega Center';
-  String _destinationAddress = 'Jl. Kyai Tapa No. 1, Tomang, Jakarta Barat';
-  String _destinationCategory = 'Screens, OLEDs & Flex Cables';
+  LatLng _currentPosition = const LatLng(-7.7956, 110.3695);
+  WarehouseLocation? _selectedWarehouse;
 
   bool _isLoadingGps = false;
   bool _showSearchResults = false;
-  String _statusText = 'GPS Ready. Tap pinpoint to detect current location.';
+  String _statusText = 'Pilih gudang untuk melihat detail & rute';
   double? _distanceKm;
   int? _etaMinutes;
 
-  // Pre-loaded verified spare parts suppliers & regional workshop hubs
-  final List<SupplierLocation> _verifiedSuppliers = const [
-    SupplierLocation(
-      id: 'SUP-01',
-      name: 'Roxy Square Spare Parts Mega Center',
-      category: 'Screens, OLEDs & Flex Cables',
-      address: 'Jl. Kyai Tapa No. 1, Tomang, Jakarta Barat',
-      city: 'Jakarta Barat',
-      coordinate: LatLng(-6.166250, 106.797820),
-      phone: '+62 21 5695-8888',
-      stockStatus: 'In Stock (Direct Factory Stock)',
+  List<LatLng> _routePoints = [];
+  bool _isLoadingRoute = false;
+
+  static const List<WarehouseLocation> _warehouses = [
+    WarehouseLocation(
+      id: 'GDG-01',
+      name: 'Gudang Pusat Sparepart SmartFix',
+      category: 'Layar OLED, LCD & Baterai',
+      address: 'Jl. Magelang KM 5, Sinduadi, Mlati, Sleman',
+      district: 'Sleman',
+      coordinate: LatLng(-7.7512, 110.3603),
+      phone: '+62 274 555-0101',
+      hours: 'Senin–Sabtu, 08.00–17.00',
+      stockInfo: 'Stok Lengkap (500+ SKU)',
+      icon: Icons.warehouse_rounded,
     ),
-    SupplierLocation(
-      id: 'SUP-02',
-      name: 'Mangga Dua Smartphone Components Hub',
-      category: 'Motherboards, Power ICs & SMD Stencils',
-      address: 'Jl. Mangga Dua Raya, Mall Mangga Dua Lt. 4, Jakarta Utara',
-      city: 'Jakarta Utara',
-      coordinate: LatLng(-6.136820, 106.829410),
-      phone: '+62 21 612-9900',
-      stockStatus: 'In Stock (OEM ICs & Soldering Tools)',
+    WarehouseLocation(
+      id: 'GDG-02',
+      name: 'Depo Komponen Elekronik Malioboro',
+      category: 'IC Chip, Motherboard & Alat Servis',
+      address: 'Jl. Malioboro No. 47, Gedongtengen, Yogyakarta',
+      district: 'Kota Yogyakarta',
+      coordinate: LatLng(-7.7920, 110.3658),
+      phone: '+62 274 512-3456',
+      hours: 'Setiap Hari, 09.00–20.00',
+      stockInfo: 'Tersedia (IC OEM & Solder)',
+      icon: Icons.store_rounded,
     ),
-    SupplierLocation(
-      id: 'SUP-03',
-      name: 'SmartFix Central Workshop & Tech Lab',
-      category: 'Master Repair Lab & Dispatch Depot',
-      address: 'Jl. Medan Merdeka Barat No. 21, Gambir, Jakarta Pusat',
-      city: 'Jakarta Pusat',
-      coordinate: LatLng(-6.175392, 106.827153),
-      phone: '+62 21 345-0011',
-      stockStatus: 'Operational (24/7 Dispatch)',
+    WarehouseLocation(
+      id: 'GDG-03',
+      name: 'Hub Sparepart HP Amplaz Ambarrukmo',
+      category: 'Kasing, Kamera & Port Charger',
+      address: 'Jl. Laksda Adisucipto KM 6, Ambarrukmo, Sleman',
+      district: 'Sleman',
+      coordinate: LatLng(-7.7833, 110.3981),
+      phone: '+62 274 488-7700',
+      hours: 'Senin–Minggu, 10.00–21.00',
+      stockInfo: 'Tersedia (Aksesoris & Casing)',
+      icon: Icons.shopping_bag_rounded,
     ),
-    SupplierLocation(
-      id: 'SUP-04',
-      name: 'ITC Cempaka Mas Spareparts Depo',
-      category: 'Batteries, Housings & Camera Modules',
-      address: 'Jl. Letjen Suprapto, Cempaka Putih, Jakarta Pusat',
-      city: 'Jakarta Pusat',
-      coordinate: LatLng(-6.164310, 106.878190),
-      phone: '+62 21 4288-1122',
-      stockStatus: 'In Stock (High Capacity Batteries)',
+    WarehouseLocation(
+      id: 'GDG-04',
+      name: 'Depo Suku Cadang Bantul Elektronik',
+      category: 'Baterai, Fleksibel & Mikrofon',
+      address: 'Jl. Parangtritis KM 3, Sewon, Bantul',
+      district: 'Bantul',
+      coordinate: LatLng(-7.8407, 110.3648),
+      phone: '+62 274 367-8899',
+      hours: 'Senin–Sabtu, 08.30–16.30',
+      stockInfo: 'Tersedia (Stok Reguler)',
+      icon: Icons.electrical_services_rounded,
     ),
-    SupplierLocation(
-      id: 'SUP-05',
-      name: 'Bandung Electronic Center (BEC) Hub',
-      category: 'Connectors, Microphones & Charge Ports',
-      address: 'Jl. Purnawarman No. 13-15, Babakan Ciamis, Bandung',
-      city: 'Bandung',
-      coordinate: LatLng(-6.903420, 107.608750),
-      phone: '+62 22 420-5555',
-      stockStatus: 'In Stock (Same-day Cargo)',
+    WarehouseLocation(
+      id: 'GDG-05',
+      name: 'Pusat Distribusi Godean Tech',
+      category: 'Alat Diagnostik & Mikroskop Servis',
+      address: 'Jl. Godean KM 4, Sidoarum, Sleman',
+      district: 'Sleman',
+      coordinate: LatLng(-7.7812, 110.3233),
+      phone: '+62 274 620-1122',
+      hours: 'Senin–Jumat, 08.00–16.00',
+      stockInfo: 'Tersedia (Peralatan Profesional)',
+      icon: Icons.build_circle_rounded,
     ),
-    SupplierLocation(
-      id: 'SUP-06',
-      name: 'Surabaya Hi-Tech Mall Logistics Depot',
-      category: 'Heavy Diagnostic Benches & Microscope Units',
-      address: 'Jl. Kusuma Bangsa No. 116, Tambaksari, Surabaya',
-      city: 'Surabaya',
-      coordinate: LatLng(-7.257500, 112.752100),
-      phone: '+62 31 531-8899',
-      stockStatus: 'In Stock (Regional Distribution)',
+    WarehouseLocation(
+      id: 'GDG-06',
+      name: 'Gudang Sparepart Wonosari Gunungkidul',
+      category: 'Panel LCD, Touch Screen & Speaker',
+      address: 'Jl. Wonosari KM 15, Piyungan, Bantul',
+      district: 'Gunungkidul',
+      coordinate: LatLng(-7.8512, 110.4598),
+      phone: '+62 274 391-5544',
+      hours: 'Senin–Sabtu, 08.00–15.00',
+      stockInfo: 'Tersedia (Pengiriman 1-2 Hari)',
+      icon: Icons.inventory_2_rounded,
     ),
   ];
 
-  List<SupplierLocation> _filteredSuppliers = [];
+  List<WarehouseLocation> _filteredWarehouses = [];
 
   @override
   void initState() {
     super.initState();
-    _filteredSuppliers = List.from(_verifiedSuppliers);
-    _calculateRouteDetails();
+    _filteredWarehouses = List.from(_warehouses);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _determinePosition();
+    });
   }
 
   @override
@@ -129,27 +163,27 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
     super.dispose();
   }
 
-  void _calculateRouteDetails() {
-    if (_selectedDestination == null) return;
-
+  void _calculateRouteDetails(WarehouseLocation warehouse) {
     final distanceMeters = Geolocator.distanceBetween(
       _currentPosition.latitude,
       _currentPosition.longitude,
-      _selectedDestination!.latitude,
-      _selectedDestination!.longitude,
+      warehouse.coordinate.latitude,
+      warehouse.coordinate.longitude,
     );
 
     setState(() {
       _distanceKm = distanceMeters / 1000.0;
-      // Urban motorcycle courier estimated speed: ~28 km/h + 5 min dispatch handling
+
       _etaMinutes = ((_distanceKm! / 28.0) * 60).round() + 5;
     });
   }
 
+  /// FITUR: Deteksi Lokasi Pengguna via Sensor GPS (Geolocator)
+  /// Memeriksa service status, meminta runtime permission, dan mengambil koordinat GPS terkini
   Future<void> _determinePosition() async {
     setState(() {
       _isLoadingGps = true;
-      _statusText = 'Acquiring GPS fix via device sensors...';
+      _statusText = 'Mendeteksi koordinat GPS Anda...';
     });
 
     try {
@@ -157,9 +191,8 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
       if (!serviceEnabled) {
         setState(() {
           _isLoadingGps = false;
-          _statusText = 'Location services disabled. Please enable device GPS.';
+          _statusText = 'GPS nonaktif — menampilkan pusat kota Yogyakarta';
         });
-        _showSnackBar('Please enable device location services.');
         return;
       }
 
@@ -169,9 +202,8 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
         if (permission == LocationPermission.denied) {
           setState(() {
             _isLoadingGps = false;
-            _statusText = 'Location permission denied by user.';
+            _statusText = 'Izin lokasi ditolak';
           });
-          _showSnackBar('Location permission was denied.');
           return;
         }
       }
@@ -179,9 +211,8 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
       if (permission == LocationPermission.deniedForever) {
         setState(() {
           _isLoadingGps = false;
-          _statusText = 'Location permissions permanently denied in app settings.';
+          _statusText = 'Izin lokasi ditolak permanen';
         });
-        _showSnackBar('Location permission permanently denied.');
         return;
       }
 
@@ -192,98 +223,192 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
         ),
       );
 
-      final newCoord = LatLng(position.latitude, position.longitude);
+      if (!mounted) return;
 
       setState(() {
-        _currentPosition = newCoord;
+        _currentPosition = LatLng(position.latitude, position.longitude);
         _isLoadingGps = false;
         _statusText =
-            'Technician GPS: ${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+            'Lokasi Anda: ${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
       });
 
-      _calculateRouteDetails();
-      _mapController.move(newCoord, 15.5);
-      _showSnackBar('Current technician GPS coordinates acquired.');
+      if (_selectedWarehouse != null) {
+        _calculateRouteDetails(_selectedWarehouse!);
+        _fetchRoadRoute(_selectedWarehouse!);
+      }
+      _mapController.move(_currentPosition, 14.0);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoadingGps = false;
-        _statusText = 'GPS Error: $e';
+        _statusText = 'GPS error — menggunakan lokasi default Yogyakarta';
       });
-      _showSnackBar('Failed to acquire GPS: $e');
     }
+  }
+
+  /// FITUR: Routing Rute Jalan Raya Nyata menggunakan OSRM (Open Source Routing Machine)
+  /// Mengambil geometri GeoJSON koordinat jalur jalan, jarak tempuh (meter), dan durasi (detik)
+  Future<void> _fetchRoadRoute(WarehouseLocation warehouse) async {
+    setState(() {
+      _isLoadingRoute = true;
+      _routePoints = [_currentPosition, warehouse.coordinate];
+      _statusText = 'Menghitung rute jalan ke ${warehouse.name}...';
+    });
+
+    final origin = _currentPosition;
+    final dest = warehouse.coordinate;
+    final url = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/'
+      '${origin.longitude},${origin.latitude};${dest.longitude},${dest.latitude}'
+      '?overview=full&geometries=geojson',
+    );
+
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['code'] == 'Ok' &&
+            data['routes'] != null &&
+            (data['routes'] as List).isNotEmpty) {
+          final route = data['routes'][0];
+          final geometry = route['geometry'];
+          final coords = geometry['coordinates'] as List<dynamic>;
+
+          final List<LatLng> points = coords.map((c) {
+            final lng = (c[0] as num).toDouble();
+            final lat = (c[1] as num).toDouble();
+            return LatLng(lat, lng);
+          }).toList();
+
+          final double distMeters =
+              (route['distance'] as num?)?.toDouble() ?? 0;
+          final double durSeconds =
+              (route['duration'] as num?)?.toDouble() ?? 0;
+
+          if (mounted && _selectedWarehouse?.id == warehouse.id) {
+            setState(() {
+              _routePoints = points;
+              if (distMeters > 0) {
+                _distanceKm = distMeters / 1000.0;
+                _etaMinutes = (durSeconds / 60.0).round().clamp(1, 999);
+              }
+              _statusText =
+                  'Rute jalan aktif (${_distanceKm?.toStringAsFixed(1)} km, ~$_etaMinutes mnt)';
+              _isLoadingRoute = false;
+            });
+
+            _mapController.fitCamera(
+              CameraFit.coordinates(
+                coordinates: points.isNotEmpty
+                    ? points
+                    : [_currentPosition, warehouse.coordinate],
+                padding: const EdgeInsets.only(
+                  top: 90,
+                  bottom: 270,
+                  left: 40,
+                  right: 40,
+                ),
+              ),
+            );
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (mounted && _selectedWarehouse?.id == warehouse.id) {
+      setState(() {
+        _isLoadingRoute = false;
+        _routePoints = [_currentPosition, warehouse.coordinate];
+        _statusText = 'Gudang dipilih: ${warehouse.name}';
+      });
+
+      _mapController.fitCamera(
+        CameraFit.coordinates(
+          coordinates: [_currentPosition, warehouse.coordinate],
+          padding: const EdgeInsets.only(
+            top: 90,
+            bottom: 270,
+            left: 40,
+            right: 40,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _selectWarehouse(WarehouseLocation warehouse) {
+    setState(() {
+      _selectedWarehouse = warehouse;
+      _showSearchResults = false;
+      _searchController.clear();
+      _statusText = 'Gudang dipilih: ${warehouse.name}';
+    });
+    _calculateRouteDetails(warehouse);
+    _fetchRoadRoute(warehouse);
+    FocusScope.of(context).unfocus();
   }
 
   void _onSearchChanged(String query) {
     final trimmed = query.trim();
-
-    // Check if query is a direct coordinate string: "lat, lng"
-    final coordRegex = RegExp(r'^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$');
-    if (coordRegex.hasMatch(trimmed)) {
-      final parts = trimmed.split(',');
-      final lat = double.tryParse(parts[0].trim());
-      final lng = double.tryParse(parts[1].trim());
-      if (lat != null && lng != null) {
-        final customCoord = LatLng(lat, lng);
-        _selectCoordinate(
-          customCoord,
-          'Custom GPS Coordinates',
-          'Lat: ${lat.toStringAsFixed(5)}, Lng: ${lng.toStringAsFixed(5)}',
-          'Custom Manual Waypoint',
-        );
-        return;
-      }
-    }
-
     setState(() {
       _showSearchResults = trimmed.isNotEmpty;
-      _filteredSuppliers = _verifiedSuppliers.where((supplier) {
+      _filteredWarehouses = _warehouses.where((w) {
         final lower = trimmed.toLowerCase();
-        return supplier.name.toLowerCase().contains(lower) ||
-            supplier.address.toLowerCase().contains(lower) ||
-            supplier.category.toLowerCase().contains(lower) ||
-            supplier.city.toLowerCase().contains(lower);
+        return w.name.toLowerCase().contains(lower) ||
+            w.address.toLowerCase().contains(lower) ||
+            w.category.toLowerCase().contains(lower) ||
+            w.district.toLowerCase().contains(lower);
       }).toList();
     });
   }
 
-  void _selectCoordinate(
-    LatLng target,
-    String name,
-    String address,
-    String category,
-  ) {
-    setState(() {
-      _selectedDestination = target;
-      _destinationName = name;
-      _destinationAddress = address;
-      _destinationCategory = category;
-      _showSearchResults = false;
-      _searchController.clear();
-      _statusText = 'Target Supplier: $name';
-    });
+  Future<void> _openInGoogleMaps(WarehouseLocation warehouse) async {
+    final lat = warehouse.coordinate.latitude;
+    final lng = warehouse.coordinate.longitude;
+    final origin = '${_currentPosition.latitude},${_currentPosition.longitude}';
+    final destination = '$lat,$lng';
+    final url = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&origin=$origin'
+      '&destination=$destination'
+      '&travelmode=driving',
+    );
 
-    _calculateRouteDetails();
-    _mapController.move(target, 15.5);
-    FocusScope.of(context).unfocus();
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      final fallback = Uri.parse(
+        'geo:$lat,$lng?q=$lat,$lng(${Uri.encodeComponent(warehouse.name)})',
+      );
+      if (await canLaunchUrl(fallback)) {
+        await launchUrl(fallback, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tidak dapat membuka Google Maps')),
+          );
+        }
+      }
+    }
   }
 
-  void _centerRoute() {
-    if (_selectedDestination == null) {
-      _mapController.move(_currentPosition, 15.0);
-      return;
-    }
-
-    _mapController.fitCamera(
-      CameraFit.coordinates(
-        coordinates: [_currentPosition, _selectedDestination!],
-        padding: const EdgeInsets.only(
-          top: 100,
-          bottom: 240,
-          left: 50,
-          right: 50,
+  void _centerMap() {
+    if (_selectedWarehouse != null) {
+      _mapController.fitCamera(
+        CameraFit.coordinates(
+          coordinates: [_currentPosition, _selectedWarehouse!.coordinate],
+          padding: const EdgeInsets.only(
+            top: 80,
+            bottom: 260,
+            left: 40,
+            right: 40,
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      _mapController.move(_currentPosition, 13.0);
+    }
   }
 
   void _showSnackBar(String msg) {
@@ -303,16 +428,16 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Parts Delivery & GPS Tracking'),
+        title: const Text('Lokasi Gudang Sparepart'),
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Fit Route in View',
-            icon: const Icon(Icons.route_rounded),
-            onPressed: _centerRoute,
+            tooltip: 'Pusatkan Peta',
+            icon: const Icon(Icons.fit_screen_rounded),
+            onPressed: _centerMap,
           ),
           IconButton(
-            tooltip: 'Locate Technician GPS',
+            tooltip: 'Deteksi Lokasi Saya',
             icon: _isLoadingGps
                 ? const SizedBox(
                     width: 18,
@@ -326,21 +451,11 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
       ),
       body: Stack(
         children: [
-          // ─── 1. Interactive Map ──────────────────────────────────────────
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _currentPosition,
-              initialZoom: 14.5,
-              onTap: (_, point) {
-                // Allow tapping anywhere to pick custom destination
-                _selectCoordinate(
-                  point,
-                  'Selected Map Location',
-                  'Lat: ${point.latitude.toStringAsFixed(5)}, Lng: ${point.longitude.toStringAsFixed(5)}',
-                  'Custom Dropped Pin',
-                );
-              },
+              initialCenter: const LatLng(-7.7956, 110.3695),
+              initialZoom: 12.5,
             ),
             children: [
               TileLayer(
@@ -348,91 +463,98 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
                 userAgentPackageName: 'com.smartfix.mobile',
               ),
 
-              // Polyline Route from Technician to Supplier
-              if (_selectedDestination != null)
+              if (_selectedWarehouse != null)
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: [_currentPosition, _selectedDestination!],
-                      strokeWidth: 4.5,
+                      points: _routePoints.isNotEmpty
+                          ? _routePoints
+                          : [_currentPosition, _selectedWarehouse!.coordinate],
+                      strokeWidth: 5.0,
                       color: const Color(0xFF0F766E),
                       borderStrokeWidth: 2.0,
                       borderColor: Colors.white,
+                      pattern: _routePoints.isEmpty
+                          ? StrokePattern.dashed(segments: const [12, 8])
+                          : const StrokePattern.solid(),
                     ),
                   ],
                 ),
 
-              // Markers Layer
               MarkerLayer(
                 markers: [
-                  // Technician Marker
                   Marker(
                     point: _currentPosition,
-                    width: 54,
-                    height: 54,
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F766E),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black38,
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.directions_bike_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Destination Supplier Marker
-                  if (_selectedDestination != null)
-                    Marker(
-                      point: _selectedDestination!,
-                      width: 54,
-                      height: 54,
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.shade700,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black38,
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.storefront_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
+                    width: 56,
+                    height: 56,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F766E),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black38,
+                            blurRadius: 8,
+                            offset: Offset(0, 3),
                           ),
                         ],
                       ),
+                      child: const Icon(
+                        Icons.person_pin_circle_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
+                  ),
+
+                  ..._warehouses.map(
+                    (w) => Marker(
+                      point: w.coordinate,
+                      width: 52,
+                      height: 52,
+                      child: GestureDetector(
+                        onTap: () => _selectWarehouse(w),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: _selectedWarehouse?.id == w.id
+                                    ? Colors.redAccent.shade700
+                                    : const Color(0xFF1E40AF),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: _selectedWarehouse?.id == w.id
+                                      ? 2.5
+                                      : 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                w.icon,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
 
-          // ─── 2. Top Search & Auto-Suggest Bar ────────────────────────────
           Positioned(
             top: 14,
             left: 14,
@@ -447,9 +569,12 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Search supplier, workshop or paste coordinates...',
+                      hintText: 'Cari gudang sparepart di Yogyakarta...',
                       hintStyle: const TextStyle(fontSize: 13),
-                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF0F766E)),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: Color(0xFF0F766E),
+                      ),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, size: 18),
@@ -465,73 +590,142 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
 
-                // Search Results Dropdown List
                 if (_showSearchResults)
                   Container(
                     margin: const EdgeInsets.only(top: 6),
-                    constraints: const BoxConstraints(maxHeight: 220),
+                    constraints: const BoxConstraints(maxHeight: 240),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
                       ],
                     ),
-                    child: _filteredSuppliers.isEmpty
+                    child: _filteredWarehouses.isEmpty
                         ? const Padding(
                             padding: EdgeInsets.all(14.0),
                             child: Text(
-                              'No matching supplier found. You can enter "lat, lng" coordinates directly.',
+                              'Gudang tidak ditemukan. Coba nama kecamatan atau kategori suku cadang.',
                               style: TextStyle(fontSize: 12),
                             ),
                           )
                         : ListView.separated(
                             shrinkWrap: true,
                             padding: EdgeInsets.zero,
-                            itemCount: _filteredSuppliers.length,
-                            separatorBuilder: (ctx, idx) => const Divider(height: 1),
+                            itemCount: _filteredWarehouses.length,
+                            separatorBuilder: (ctx, idx) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
-                              final item = _filteredSuppliers[index];
+                              final item = _filteredWarehouses[index];
                               return ListTile(
-                                leading: const CircleAvatar(
+                                leading: CircleAvatar(
                                   radius: 16,
-                                  backgroundColor: Color(0x1F0F766E),
-                                  child: Icon(Icons.store, color: Color(0xFF0F766E), size: 18),
+                                  backgroundColor: const Color(0xFF1E40AF)
+                                      .withValues(alpha: 0.12),
+                                  child: Icon(
+                                    item.icon,
+                                    color: const Color(0xFF1E40AF),
+                                    size: 18,
+                                  ),
                                 ),
                                 title: Text(
                                   item.name,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                                 subtitle: Text(
-                                  '${item.city} • ${item.category}',
+                                  '${item.district} • ${item.category}',
                                   style: const TextStyle(fontSize: 11),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                trailing: const Icon(Icons.arrow_forward_ios, size: 12),
-                                onTap: () => _selectCoordinate(
-                                  item.coordinate,
-                                  item.name,
-                                  item.address,
-                                  item.category,
+                                trailing: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 12,
                                 ),
+                                onTap: () => _selectWarehouse(item),
                               );
                             },
                           ),
+                  ),
+
+                if (!_showSearchResults && _statusText.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: const Color(0xFF0F766E).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isLoadingRoute) ...[
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF0F766E),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ] else ...[
+                          const Icon(
+                            Icons.alt_route_rounded,
+                            size: 14,
+                            color: Color(0xFF0F766E),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Flexible(
+                          child: Text(
+                            _statusText,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
           ),
 
-          // ─── 3. Floating Quick Action Controls ───────────────────────────
           Positioned(
             right: 14,
-            bottom: 245,
+            bottom: _selectedWarehouse != null ? 265 : 24,
             child: Column(
               children: [
                 FloatingActionButton.small(
@@ -565,7 +759,10 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.gps_fixed_rounded),
                 ),
@@ -573,155 +770,226 @@ class _MapTrackingScreenState extends State<MapTrackingScreen> {
             ),
           ),
 
-          // ─── 4. Bottom Target & Delivery Details Card ────────────────────
-          Positioned(
-            bottom: 16,
-            left: 14,
-            right: 14,
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Status Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F766E).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'TARGET DISPATCH ROUTE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F766E),
-                              letterSpacing: 0.5,
+          if (_selectedWarehouse != null)
+            Positioned(
+              bottom: 16,
+              left: 14,
+              right: 14,
+              child: Card(
+                elevation: 10,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E40AF)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'GUDANG SUKU CADANG',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E40AF),
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
+                          const Spacer(),
+                          if (_distanceKm != null)
+                            Text(
+                              '${_distanceKm!.toStringAsFixed(1)} km  (~${_etaMinutes ?? 0} menit)',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Color(0xFF0F766E),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      Text(
+                        _selectedWarehouse!.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
                         ),
-                        const Spacer(),
-                        if (_distanceKm != null)
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _selectedWarehouse!.category,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F766E),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 13,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _selectedWarehouse!.address,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time_rounded,
+                            size: 13,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            '${_distanceKm!.toStringAsFixed(1)} km  (~${_etaMinutes ?? 0} mins)',
+                            _selectedWarehouse!.hours,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: Color(0xFF0F766E),
+                              fontSize: 11,
+                              color: Colors.grey,
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _statusText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.primary,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 10),
 
-                    // Destination Title & Category Badge
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _destinationName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _destinationCategory,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _destinationAddress,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Action Buttons Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.copy_rounded, size: 16),
-                            label: const Text('Copy GPS', style: TextStyle(fontSize: 12)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.copy_rounded, size: 15),
+                              label: const Text(
+                                'Salin Lokasi',
+                                style: TextStyle(fontSize: 12),
                               ),
-                            ),
-                            onPressed: () {
-                              if (_selectedDestination != null) {
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: () {
                                 final text =
-                                    '${_selectedDestination!.latitude.toStringAsFixed(6)}, ${_selectedDestination!.longitude.toStringAsFixed(6)}';
+                                    '${_selectedWarehouse!.name}\n${_selectedWarehouse!.address}\n'
+                                    '${_selectedWarehouse!.coordinate.latitude.toStringAsFixed(6)}, '
+                                    '${_selectedWarehouse!.coordinate.longitude.toStringAsFixed(6)}';
                                 Clipboard.setData(ClipboardData(text: text));
-                                _showSnackBar('Coordinates copied: $text');
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton.icon(
-                            icon: const Icon(Icons.navigation_rounded, size: 16),
-                            label: const Text('Dispatch Courier', style: TextStyle(fontSize: 13)),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF0F766E),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                                _showSnackBar(
+                                  'Info gudang disalin ke clipboard',
+                                );
+                              },
                             ),
-                            onPressed: () {
-                              _showSnackBar(
-                                'Courier delivery route confirmed to $_destinationName.',
-                              );
-                            },
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton.icon(
+                              icon: const Icon(
+                                Icons.open_in_new_rounded,
+                                size: 16,
+                              ),
+                              label: const Text(
+                                'Buka Google Maps',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF0F766E),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: () =>
+                                  _openInGoogleMaps(_selectedWarehouse!),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+
+          if (_selectedWarehouse == null)
+            Positioned(
+              bottom: 24,
+              left: 14,
+              right: 14,
+              child: Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.touch_app_rounded,
+                        color: Color(0xFF1E40AF),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Ketuk marker 🔵 pada peta atau cari nama gudang\nuntuk melihat detail & rute ke Google Maps',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -5,6 +5,12 @@ import 'package:smartfix_mobile/core/notification_helper.dart';
 import 'package:smartfix_mobile/features/auth/widgets/biometric_btn.dart';
 import 'package:smartfix_mobile/main_layout.dart';
 
+/// Halaman Login utama aplikasi SmartFix Mobile.
+/// Fitur ini memenuhi kriteria projek PAM:
+/// 1. Autentikasi pengguna berbasis REST API & Laravel Sanctum Bearer Token
+/// 2. Integrasi Login Biometrik (Fingerprint / Face ID) menggunakan hardware sensor
+/// 3. Validasi formulir (format email regex, panjang minimal password)
+/// 4. Notifikasi lokal selamat datang saat autentikasi berhasil
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -14,7 +20,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  // ── Form ────────────────────────────────────────────────────────────────
+  // Controller form & text field
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,12 +30,12 @@ class _LoginScreenState extends State<LoginScreen>
   final AuthHelper _authHelper = AuthHelper();
   final ApiService _apiService = ApiService();
 
-  // ── Animations ──────────────────────────────────────────────────────────
+  // Animasi fade-in saat pertama kali layar dimuat
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
-  // ── Theme constants ─────────────────────────────────────────────────────
-  static const Color _bgColor = Color(0xFF1E1E1E); // dark-charcoal
+  // Warna tema Industrial-Tech
+  static const Color _bgColor = Color(0xFF1E1E1E);
   static const Color _surfaceColor = Color(0xFF2A2A2A);
   static const Color _teal = Color(0xFF14B8A6);
   static const Color _tealDark = Color(0xFF0F766E);
@@ -39,12 +45,28 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    // Inisialisasi controller animasi fade-in
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
+
+    // Mengisi otomatis email jika sebelumnya pernah login dengan biometrik
+    _loadSavedAccount();
+  }
+
+  /// Membaca email yang tersimpan aman untuk memudahkan proses login berikutnya
+  Future<void> _loadSavedAccount() async {
+    final creds = await _authHelper.getBiometricCredentials();
+    if (creds != null && creds['email'] != null && mounted) {
+      if (_emailController.text.isEmpty) {
+        setState(() {
+          _emailController.text = creds['email']!;
+        });
+      }
+    }
   }
 
   @override
@@ -55,11 +77,11 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // ── Login logic ─────────────────────────────────────────────────────────
-
+  /// Menangani alur setelah login berhasil (simpan sesi, picu notifikasi, dan buka MainLayout)
   Future<void> _onLoginSuccess(String token, String username) async {
     await _authHelper.setSession(token: token, username: username);
 
+    // Memicu notifikasi lokal selamat datang
     NotificationHelper().showNotification(
       id: 101,
       title: 'Selamat Datang, $username!',
@@ -67,32 +89,44 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainLayout()),
-    );
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => const MainLayout()));
   }
 
+  /// Menangani login manual menggunakan email dan kata sandi via API REST
   Future<void> _handlePasswordLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final response = await _apiService.login(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
 
-      // Extract user name from response (falls back to email prefix).
-      final String username = (response['user'] is Map
+      // Request autentikasi ke backend Laravel Sanctum
+      final response = await _apiService.login(email, password);
+
+      final String username =
+          (response['user'] is Map
               ? (response['user']['name'] as String?)
               : null) ??
-          _emailController.text.trim().split('@').first;
+          email.split('@').first;
 
-      final String token = (response['token'] ??
-              response['access_token'] ??
-              (response['data'] is Map ? response['data']['token'] : null) ??
-              '') as String;
+      final String token =
+          (response['token'] ??
+                  response['access_token'] ??
+                  (response['data'] is Map
+                      ? response['data']['token']
+                      : null) ??
+                  '')
+              as String;
+
+      // Simpan kredensial terenkripsi agar dapat digunakan untuk login cepat biometrik berikutnya
+      await _authHelper.saveBiometricCredentials(
+        email: email,
+        password: password,
+        username: username,
+      );
 
       if (!mounted) return;
       await _onLoginSuccess(token, username);
@@ -101,27 +135,81 @@ class _LoginScreenState extends State<LoginScreen>
       _showError(e.toString().replaceFirst('Exception: ', ''));
     } catch (e) {
       if (!mounted) return;
-      _showError('Login gagal. Silakan periksa kredensial atau koneksi jaringan Anda.');
+      _showError(
+        'Login gagal. Silakan periksa kredensial atau koneksi jaringan Anda.',
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  /// Menangani login cepat menggunakan sensor biometrik (Fingerprint / Face ID)
   Future<void> _handleBiometricSuccess() async {
-    // Biometric sign in: retrieve last known username or fallback
-    final savedUsername = await _authHelper.getUsername();
-    final username = _emailController.text.trim().isNotEmpty
-        ? _emailController.text.trim().split('@').first
-        : (savedUsername.isNotEmpty ? savedUsername : 'Teknisi');
+    // Ambil kredensial akun yang tersimpan secara terenkripsi di Secure Storage
+    final savedCreds = await _authHelper.getBiometricCredentials();
+    final email = _emailController.text.trim().isNotEmpty
+        ? _emailController.text.trim()
+        : savedCreds?['email'];
+    final password = _passwordController.text.isNotEmpty
+        ? _passwordController.text
+        : savedCreds?['password'];
 
-    final existingToken = _authHelper.sessionToken;
-    final token = (existingToken != null && existingToken.isNotEmpty)
-        ? existingToken
-        : 'biometric_session_${DateTime.now().millisecondsSinceEpoch}';
+    // Validasi apakah pengguna sudah pernah login sebelumnya
+    if (email == null ||
+        email.isEmpty ||
+        password == null ||
+        password.isEmpty) {
+      _showError(
+        'Belum ada akun tersimpan untuk biometrik. Silakan masuk menggunakan Email dan Password terlebih dahulu minimal 1 kali.',
+      );
+      return;
+    }
 
-    await _onLoginSuccess(token, username);
+    setState(() => _isLoading = true);
+
+    try {
+      // Login langsung ke backend Sanctum dengan kredensial terverifikasi sensor biometrik
+      final response = await _apiService.login(email, password);
+
+      final String username =
+          (response['user'] is Map
+              ? (response['user']['name'] as String?)
+              : null) ??
+          savedCreds?['username'] ??
+          email.split('@').first;
+
+      final String token =
+          (response['token'] ??
+                  response['access_token'] ??
+                  (response['data'] is Map
+                      ? response['data']['token']
+                      : null) ??
+                  '')
+              as String;
+
+      // Perbarui kredensial tersimpan
+      await _authHelper.saveBiometricCredentials(
+        email: email,
+        password: password,
+        username: username,
+      );
+
+      if (!mounted) return;
+      await _onLoginSuccess(token, username);
+    } on Exception catch (e) {
+      if (!mounted) return;
+      _showError(
+        'Autentikasi biometrik gagal: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Login biometrik gagal menghubungi server backend.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
+  /// Menampilkan floating SnackBar merah untuk pesan error
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -140,8 +228,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── UI ───────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,8 +235,10 @@ class _LoginScreenState extends State<LoginScreen>
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 28.0,
+              vertical: 20.0,
+            ),
             child: FadeTransition(
               opacity: _fadeAnim,
               child: Form(
@@ -159,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ─── Logo ──────────────────────────────────────────
+                    // Logo & Branding SmartFix
                     Center(
                       child: Container(
                         width: 80,
@@ -188,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 20),
 
-                    // ─── Title ─────────────────────────────────────────
+                    // Judul Aplikasi
                     const Text(
                       'SmartFix Mobile',
                       textAlign: TextAlign.center,
@@ -203,14 +291,11 @@ class _LoginScreenState extends State<LoginScreen>
                     const Text(
                       'Sistem Inventaris & Perbaikan Smartphone',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 13, color: _textSecondary),
                     ),
                     const SizedBox(height: 40),
 
-                    // ─── Email Field ──────────────────────────────────
+                    // Input Field: Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -225,7 +310,8 @@ class _LoginScreenState extends State<LoginScreen>
                           return 'Silakan masukkan email Anda';
                         }
                         final emailRegex = RegExp(
-                            r'^[\w\.\-]+@[\w\.\-]+\.[a-zA-Z]{2,}$');
+                          r'^[\w\.\-]+@[\w\.\-]+\.[a-zA-Z]{2,}$',
+                        );
                         if (!emailRegex.hasMatch(val.trim())) {
                           return 'Silakan masukkan alamat email yang valid';
                         }
@@ -234,27 +320,29 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 16),
 
-                    // ─── Password Field ───────────────────────────────
+                    // Input Field: Kata Sandi
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       style: const TextStyle(color: _textPrimary),
-                      decoration: _inputDecoration(
-                        label: 'Kata Sandi',
-                        hint: '••••••••',
-                        icon: Icons.lock_outline,
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: _textSecondary,
+                      decoration:
+                          _inputDecoration(
+                            label: 'Kata Sandi',
+                            hint: '••••••••',
+                            icon: Icons.lock_outline,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: _textSecondary,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
                           ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
-                        ),
-                      ),
                       validator: (val) {
                         if (val == null || val.isEmpty) {
                           return 'Silakan masukkan kata sandi Anda';
@@ -267,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 28),
 
-                    // ─── Sign In Button ───────────────────────────────
+                    // Tombol Submit Login Manual
                     SizedBox(
                       height: 52,
                       child: DecoratedBox(
@@ -315,12 +403,14 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // ─── OR Divider ───────────────────────────────────
+                    // Garis Pemisah (Divider) ATAU
                     Row(
                       children: [
                         Expanded(
-                            child: Divider(
-                                color: _textSecondary.withValues(alpha: 0.3))),
+                          child: Divider(
+                            color: _textSecondary.withValues(alpha: 0.3),
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           child: Text(
@@ -333,13 +423,15 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                         Expanded(
-                            child: Divider(
-                                color: _textSecondary.withValues(alpha: 0.3))),
+                          child: Divider(
+                            color: _textSecondary.withValues(alpha: 0.3),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    // ─── Biometric Button ─────────────────────────────
+                    // Tombol Opsi Login Biometrik (Fingerprint / Face ID)
                     BiometricBtn(
                       onSuccess: _handleBiometricSuccess,
                       onError: (msg) => _showError(msg),
@@ -354,8 +446,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Shared input decoration builder ─────────────────────────────────────
-
+  /// Helper styling dekorasi text field input form
   InputDecoration _inputDecoration({
     required String label,
     required String hint,
@@ -369,17 +460,14 @@ class _LoginScreenState extends State<LoginScreen>
       prefixIcon: Icon(icon, color: _teal, size: 22),
       filled: true,
       fillColor: _surfaceColor,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: _textSecondary.withValues(alpha: 0.15),
-        ),
+        borderSide: BorderSide(color: _textSecondary.withValues(alpha: 0.15)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),

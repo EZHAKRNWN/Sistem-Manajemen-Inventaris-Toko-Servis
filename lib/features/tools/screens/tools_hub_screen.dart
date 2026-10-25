@@ -1,14 +1,26 @@
+// ============================================================================
+// FITUR: PUSAT UTILITAS TEKNIS & INTEGRASI FITUR LANJUTAN (TOOLS HUB SCREEN)
+// ----------------------------------------------------------------------------
+// Kegunaan untuk Presentasi:
+// 1. Hub Navigasi Utilitas Lengkap: Menjadi pusat akses untuk 5 fitur unggulan aplikasi SmartFix.
+// 2. Kategori Keamanan Kriptografi: Menyediakan akses ke modul Verifikasi Blockchain Ledger (SHA-256).
+// 3. Kategori AI & Kecerdasan Buatan: Mengarahkan teknisi ke Asisten AI Diagnostik Servis (Groq Cloud).
+// 4. Kategori Konversi Kurs & Waktu: Membantu kalkulasi impor suku cadang global (IDR, USD, EUR, CNY, JPY)
+//    serta sinkronisasi zona waktu (WIB, WITA, WIT, London, CST, JST, EST).
+// 5. Kategori Hardware & Sensor: Mengintegrasikan Peta Navigasi Lokasi Gudang (LBS) dan Mini-game Gyroscope.
+// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:smartfix_mobile/features/location/screens/map_tracking_screen.dart';
 import 'package:smartfix_mobile/features/minigame/screens/inventory_sorter_game.dart';
 import 'package:smartfix_mobile/features/tools/screens/ai_assistant_screen.dart';
 import 'package:smartfix_mobile/features/tools/screens/blockchain_verify_screen.dart';
 import 'package:smartfix_mobile/features/tools/screens/currency_time_converter.dart';
+import 'package:smartfix_mobile/features/tools/screens/smartfix_text_chat_screen.dart';
 
 class ToolsHubScreen extends StatelessWidget {
   const ToolsHubScreen({super.key});
 
-  // Industrial-Tech Color System
   static const Color _bgColor = Color(0xFF1E1E1E);
   static const Color _surfaceColor = Color(0xFF262626);
   static const Color _cardColor = Color(0xFF2B2B2B);
@@ -35,24 +47,34 @@ class ToolsHubScreen extends StatelessWidget {
         ],
       },
       {
-        'category': 'Kecerdasan & Diagnostik',
+        'category': 'Kecerdasan & Diagnostik AI',
         'items': [
           {
-            'title': 'Asisten Perbaikan AI',
-            'subtitle': 'Diagnostik motherboard, panduan pinout, dan pemecahan masalah perbaikan',
-            'badge': 'AI Diagnostics',
+            'title': 'AI Visual Diagnostic',
+            'subtitle': 'Diagnostik visual kerusakan fisik smartphone & motherboard via foto kamera/galeri',
+            'badge': 'AI Vision',
             'badgeColor': Colors.purpleAccent,
-            'icon': Icons.smart_toy_outlined,
+            'icon': Icons.document_scanner_outlined,
             'accentColor': Colors.purpleAccent,
             'screen': const AiAssistantScreen(),
           },
           {
-            'title': 'Konverter Mata Uang & Waktu',
-            'subtitle': 'Nilai tukar langsung untuk IDR, USD, EUR, dan waktu layanan multi-wilayah',
-            'badge': 'Forex & Time',
-            'badgeColor': Colors.lightBlueAccent,
-            'icon': Icons.currency_exchange_rounded,
-            'accentColor': Colors.lightBlueAccent,
+            'title': 'SmartFix Assistant',
+            'subtitle': 'Konsultasi SOP bengkel, estimasi biaya servis, garansi & alur kerja teknisi (Teks Murni)',
+            'badge': 'Text LLM',
+            'badgeColor': _teal,
+            'icon': Icons.chat_bubble_outline_rounded,
+            'accentColor': _teal,
+            'screen': const SmartFixTextChatScreen(),
+          },
+          {
+            'title': 'Zona Waktu & Jam Kerja Suplier',
+            'subtitle':
+                'Pantau jam operasional suplier internasional (London, Shenzhen, Tokyo, NY) & zona waktu WIB, WITA, WIT',
+            'badge': 'Jam Dunia',
+            'badgeColor': Colors.amber,
+            'icon': Icons.schedule_rounded,
+            'accentColor': Colors.amber,
             'screen': const CurrencyTimeConverterScreen(),
           },
         ],
@@ -61,18 +83,18 @@ class ToolsHubScreen extends StatelessWidget {
         'category': 'Logistik & Sensor Perangkat Keras',
         'items': [
           {
-            'title': 'Pelacakan Kurir GPS',
-            'subtitle': 'Pelacakan lokasi lapangan langsung via OpenStreetMap & Geolocator',
-            'badge': 'LBS GPS',
+            'title': 'Lokasi Gudang Sparepart',
+            'subtitle': 'Temukan gudang suku cadang di Yogyakarta & buka rute via Google Maps',
+            'badge': 'Gudang DIY',
             'badgeColor': Colors.tealAccent,
-            'icon': Icons.map_outlined,
+            'icon': Icons.warehouse_outlined,
             'accentColor': Colors.tealAccent,
             'screen': const MapTrackingScreen(),
           },
           {
-            'title': 'Penyortir Inventaris Sensor',
-            'subtitle': 'Kalibrasi & uji sensor giroskop dan akselerometer perangkat',
-            'badge': 'Sensors',
+            'title': 'Tangkap Sparepart (Sensor Gyro) ⚡',
+            'subtitle': 'Tangkap komponen smartphone yang berjatuhan dengan memiringkan ponsel — uji refleks teknisi!',
+            'badge': 'Mini Game Gyro',
             'badgeColor': Colors.amber,
             'icon': Icons.sports_esports_outlined,
             'accentColor': Colors.amber,
@@ -109,7 +131,6 @@ class ToolsHubScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         children: [
-          // Banner Card
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -125,7 +146,11 @@ class ToolsHubScreen extends StatelessWidget {
                     color: _teal.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.handyman_rounded, color: _teal, size: 24),
+                  child: const Icon(
+                    Icons.handyman_rounded,
+                    color: _teal,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -153,7 +178,6 @@ class ToolsHubScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Grouped Sections
           ...toolGroups.map((group) {
             final category = group['category'] as String;
             final items = group['items'] as List<Map<String, dynamic>>;
@@ -199,7 +223,6 @@ class ToolsHubScreen extends StatelessWidget {
                           padding: const EdgeInsets.all(14),
                           child: Row(
                             children: [
-                              // Icon Capsule
                               Container(
                                 width: 44,
                                 height: 44,
@@ -218,7 +241,6 @@ class ToolsHubScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 14),
 
-                              // Title & Subtitle
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,10 +264,16 @@ class ToolsHubScreen extends StatelessWidget {
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: badgeColor.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(6),
+                                            color: badgeColor.withValues(
+                                              alpha: 0.15,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                             border: Border.all(
-                                              color: badgeColor.withValues(alpha: 0.4),
+                                              color: badgeColor.withValues(
+                                                alpha: 0.4,
+                                              ),
                                             ),
                                           ),
                                           child: Text(
